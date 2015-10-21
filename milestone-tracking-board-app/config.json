@@ -1,0 +1,32 @@
+{
+   "name": "MilestoneTrackingBoardApp",
+   "className": "MilestoneTrackingBoardApp",
+   "server": "https://demo-east.rallydev.com",
+   "sdk": "2.0",
+   "javascript": [
+      "treegrid/FormattedIDRendererOverride.js",
+      "treegrid/TreeStore.js",
+      "treegrid/TreeStoreBuilder.js",
+      "statsbanner/BannerWidget.js",
+      "statsbanner/Gauge.js",
+      "statsbanner/PlannedVelocity.js",
+      "statsbanner/TimeboxEnd.js",
+      "statsbanner/LateStories.js",
+      "statsbanner/Accepted.js",
+      "statsbanner/EstimatedStories.js",
+      "statsbanner/milestoneprogresscharts/MilestoneProgressMixin.js",
+      "statsbanner/milestoneprogresscharts/MilestoneProgressChart.js",
+      "statsbanner/milestoneprogresscharts/PieChart.js",
+      "statsbanner/milestoneprogresscharts/MinimalPieChart.js",
+      "statsbanner/MilestoneProgressDialogChartToggle.js",
+      "statsbanner/MilestoneProgressDialog.js",
+      "statsbanner/MilestoneProgress.js",
+      "statsbanner/CollapseExpand.js",
+      "StatsBanner.js",
+      "Utilities.js",
+      "App.js"
+   ],
+   "css": [
+      "app.css"
+   ]
+}
