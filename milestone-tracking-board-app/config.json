@@ -4,9 +4,6 @@
    "server": "https://demo-east.rallydev.com",
    "sdk": "2.0",
    "javascript": [
-      "treegrid/FormattedIDRendererOverride.js",
-      "treegrid/TreeStore.js",
-      "treegrid/TreeStoreBuilder.js",
       "statsbanner/BannerWidget.js",
       "statsbanner/Gauge.js",
       "statsbanner/PlannedVelocity.js",
