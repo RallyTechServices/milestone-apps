@@ -8,7 +8,7 @@
     Ext.define('technical-services-MilestoneTrackingApp', {
         extend: 'Rally.app.App',
         componentCls: 'iterationtrackingboard',
-
+        logger: new Rally.technicalservices.Logger(),
         settingsScope: 'project',
         autoScroll: false,
 
@@ -30,6 +30,8 @@
         sModelNames: [],
 
         launch: function(){
+
+            console.log('blah',window.location)
             if(!this.rendered) {
                 this.on('afterrender', this.launch, this, {single: true});
                 return;
@@ -65,7 +67,7 @@
 
         },
         _getModelNames: function () {
-            return this.sModelNames;
+            return this.sModelNames.concat(['HierarchicalRequirement']);
         },
 
         getSettingsFields: function () {
@@ -76,14 +78,26 @@
                 label: 'Show Children in any Project'
             });
 
+            fields.push({
+                name: 'showTestCaseMetrics',
+                xtype: 'rallycheckboxfield',
+                label: 'Show Test Case Metrics'
+            });
+
+            fields.push({
+                name: 'showDefectMetrics',
+                xtype: 'rallycheckboxfield',
+                label: 'Show Defect Metrics'
+            });
+
             return fields;
         },
         _getFilters: function(){
             var filters = [];
-            if (this.down('rallymilestonecombobox') && this.down('rallymilestonecombobox').getRecord()){
+            if (this._getTimeBoxRecord()){
                 filters = Rally.data.wsapi.Filter({
                     property: "Milestones",
-                    value: this.down('rallymilestonecombobox').getRecord().get('_ref')
+                    value: this._getTimeBoxRecord().get('_ref')
                 });
             }
             return filters;
@@ -122,29 +136,47 @@
         },
 
         _getStoryFilters: function(milestoneRef){
-            return Ext.create('Rally.data.wsapi.Filter',{
-                property: 'PortfolioItem.Milestones',
+            var filters =  Ext.create('Rally.data.wsapi.Filter',{
+                property: 'Feature.Milestones',
                 value: this._getMilestoneRef()
+            });
+            return filters.and({
+                property: 'DirectChildrenCount',
+                value: 0
             });
         },
 
         _getOrphanedStoryFilters: function(){
-            return Rally.data.wsapi.Filter.and([{
-                property: 'PortfolioItem',
-                value: "null"
-            },{
-                property: 'Parent',
-                value: "null"
-            },{
+            var filter = Ext.create('Rally.data.wsapi.Filter', {
+            //    property: 'PortfolioItem',
+            //    value: "null"
+            //},{
+            //    property: 'Parent',
+            //    value: "null"
+                property: 'Feature',
+                value: ""
+            });
+            filter = filter.and({
+                property: 'DirectChildrenCount',
+                value: 0
+            });
+            filter = filter.and({
                 property: 'Milestones',
                 value: this._getMilestoneRef()
-            }]);
+            });
+            return filter;
         },
         _getStoreConfigs: function(){
+            var feature_filters = this._getStoryFilters(),
+                orphan_filters = this._getOrphanedStoryFilters(),
+                filters = feature_filters.or(orphan_filters);
+
+            console.log('orphan query',orphan_filters.toString() ,feature_filters.toString());
+            console.log('query', filters.toString());
             return {
                 model: 'HierarchicalRequirement',
-                fetch: ['ObjectID', 'FormattedID', 'ScheduleState', 'PlanEstimate'],
-                filters: Rally.data.wsapi.Filter.or(this._getStoryFilters(),this._getOrphanedStoryFilters())
+                fetch: ['ObjectID', 'FormattedID', 'ScheduleState', 'PlanEstimate','Iteration','Name','StartDate','EndDate'],
+                filters: filters
             };
         },
         _addStatsBanner: function() {
@@ -190,9 +222,6 @@
                 },
                 listeners: {
                     load: this._onLoad,
-                    //toggle: this._onToggle,
-               //     recordupdate: this._publishContentUpdatedNoDashboardLayout,
-               //     recordcreate: this._publishContentUpdatedNoDashboardLayout,
                     afterrender : function() {
                         console.log("afterrender",this);
                         this.setWidth(this.getWidth()+1);

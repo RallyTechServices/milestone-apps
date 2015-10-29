@@ -27,20 +27,15 @@
 
         items: [
             {xtype: 'statsbanneraccepted', byCount: false,  title: 'Accepted Points', unitLabel: "Points"},
-            {xtype: 'statsbannertimeboxend'},
-            {xtype: 'statsbannerestimatedstories'},
-            {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "Count"},
-            {xtype: 'statsbannerlatestories'},
-            {xtype: 'statsbanneriterationprogress', flex: 2},
+            {xtype: 'statsbannertimeboxend', title: "Remaining Days", unitLabel: "Days"},
+            {xtype: 'statsbannerestimatedstories', title: "Estimated Stories", unitLabel: "Stories"},
+            {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "Stories"},
+            {xtype: 'statsbannerlatestories', title: "Late Stories", unitLabel: "Stories"},
+            {xtype: 'statsbannermilestoneprogress', flex: 2},
             {xtype: 'statsbannercollapseexpand', flex: 0}
         ],
 
         constructor: function() {
-            //this.stateId = Rally.environment.getContext().getScopedStateId('stats-banner');
-            console.log('arguments', arguments);
-            this.totalUnitFilter = arguments[0].totalUnitFilter;
-            this.calculatedUnitFilter = arguments[0].calculatedUnitFilter;
-
             this.callParent(arguments);
         },
 

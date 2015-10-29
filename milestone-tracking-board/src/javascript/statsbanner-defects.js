@@ -4,39 +4,37 @@
     /**
      * shows accepted work units for timebox
      */
-    Ext.define('MilestoneTrackingApp.EstimatedStories', {
+    Ext.define('MilestoneTrackingApp.Defects', {
         extend: 'MilestoneTrackingApp.ConfigurableGauge',
-        alias:'widget.statsbannerestimatedstories',
+        alias:'widget.statsbannerdefects',
+
         config: {
-            calculatedUnitFilter: null,
-            totalUnitFilter: null,
             data: {
                 percentage: 0,
                 calculatedUnits: 0,
                 totalUnits: 0,
-                byCount: false
+                title: 'Active Defects'
             }
         },
 
         _getRenderData: function() {
 
-            console.log('_getRenderData', this.byCount);
             var total = 0,
-                estimated = 0;
+                active = 0,
+                closedStates = ['Closed'];
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                total++;
-                if (r.get('PlanEstimate') && r.get('PlanEstimate') > 0 ){
-                    estimated++;
+                if (!Ext.Array.contains(closedStates, r.get('State'))){
+                    active++;
                 }
-
+                total++
             });
 
-            var pct = total === 0 ? 0 : Math.round(estimated / total * 100);
+            var pct = total === 0 ? 0 : Math.round(active / total * 100);
 
             var data = {
                 percentage: pct,
-                calculatedUnits: estimated,
+                calculatedUnits: active,
                 totalUnits: total,
                 unit: this.unitLabel,
                 title: this.title

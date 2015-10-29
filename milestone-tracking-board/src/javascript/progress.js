@@ -4,9 +4,9 @@
     /**
      * shows burndown for timebox
      */
-    Ext.define('MilestoneTrackingApp.IterationProgress', {
+    Ext.define('MilestoneTrackingApp.MilestoneProgress', {
         extend: 'MilestoneTrackingApp.BannerWidget',
-        alias:'widget.statsbanneriterationprogress',
+        alias:'widget.statsbannermilestoneprogress',
         requires: [
             'Rally.ui.carousel.Carousel',
             //'Rally.apps.releasetracking.statsbanner.iterationprogresscharts.BurndownChart',

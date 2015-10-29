@@ -15,6 +15,8 @@
         "statsbanner-gauge.js",
         "statsbanner-configurable-gauge.js",
         "statsbanner-accepted.js",
+        "statsbanner-defects.js",
+        "statsbanner-testcases.js",
         "statsbanner-collapseexpand.js",
         "statsbanner-estimatedstories.js",
         "statsbanner-latestories.js",

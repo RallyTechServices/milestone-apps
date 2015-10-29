@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Oct 26 2015 06:17:05 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Oct 28 2015 19:24:42 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Oct 26 2015 06:17:05 GMT-0600 (MDT)";
-        var CHECKSUM = 282718181539;
+        var APP_BUILD_DATE = "Wed Oct 28 2015 19:24:42 GMT-0600 (MDT)";
+        var CHECKSUM = 286146206764;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -821,20 +821,15 @@ Ext.define('Rally.technicalservices.Utilities',{
 
         items: [
             {xtype: 'statsbanneraccepted', byCount: false,  title: 'Accepted Points', unitLabel: "Points"},
-            {xtype: 'statsbannertimeboxend'},
-            {xtype: 'statsbannerestimatedstories'},
-            {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "Count"},
-            {xtype: 'statsbannerlatestories'},
-            {xtype: 'statsbanneriterationprogress', flex: 2},
+            {xtype: 'statsbannertimeboxend', title: "Remaining Days", unitLabel: "Days"},
+            {xtype: 'statsbannerestimatedstories', title: "Estimated Stories", unitLabel: "Stories"},
+            {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "Stories"},
+            {xtype: 'statsbannerlatestories', title: "Late Stories", unitLabel: "Stories"},
+            {xtype: 'statsbannermilestoneprogress', flex: 2},
             {xtype: 'statsbannercollapseexpand', flex: 0}
         ],
 
         constructor: function() {
-            //this.stateId = Rally.environment.getContext().getScopedStateId('stats-banner');
-            console.log('arguments', arguments);
-            this.totalUnitFilter = arguments[0].totalUnitFilter;
-            this.calculatedUnitFilter = arguments[0].calculatedUnitFilter;
-
             this.callParent(arguments);
         },
 
@@ -1560,13 +1555,10 @@ Ext.define('Rally.technicalservices.Utilities',{
         alias:'widget.statsbanneraccepted',
 
         config: {
-            calculatedUnitFilter: null,
-            totalUnitFilter: null,
             data: {
                 percentage: 0,
                 calculatedUnits: 0,
                 totalUnits: 0,
-                unit: '',
                 title: 'Accepted Points',
                 byCount: false
             }
@@ -1574,7 +1566,6 @@ Ext.define('Rally.technicalservices.Utilities',{
 
         _getRenderData: function() {
 
-            console.log('_getRenderData', this.byCount);
             var total = 0,
                 accepted_total = 0
                 byCount = this.byCount,
@@ -1728,6 +1719,56 @@ Ext.define('Rally.technicalservices.Utilities',{
     var Ext = window.Ext4 || window.Ext;
 
     /**
+     * shows accepted work units for timebox
+     */
+    Ext.define('MilestoneTrackingApp.Defects', {
+        extend: 'MilestoneTrackingApp.ConfigurableGauge',
+        alias:'widget.statsbannerdefects',
+
+        config: {
+            data: {
+                percentage: 0,
+                calculatedUnits: 0,
+                totalUnits: 0,
+                title: 'Active Defects'
+            }
+        },
+
+        _getRenderData: function() {
+
+            var total = 0,
+                active = 0,
+                closedStates = ['Closed'];
+
+            Ext.Array.each(this.store.getRange(), function(r) {
+                if (!Ext.Array.contains(closedStates, r.get('State'))){
+                    active++;
+                }
+                total++
+            });
+
+            var pct = total === 0 ? 0 : Math.round(active / total * 100);
+
+            var data = {
+                percentage: pct,
+                calculatedUnits: active,
+                totalUnits: total,
+                unit: this.unitLabel,
+                title: this.title
+            };
+            return data;
+
+        }
+    });
+})();
+/**
+ * Created by kcorkan on 10/28/15.
+ */
+
+(function() {
+    var Ext = window.Ext4 || window.Ext;
+
+    /**
      * shows collapse/expand toggle for stats banner
      */
     Ext.define('MilestoneTrackingApp.CollapseExpand', {
@@ -1780,107 +1821,44 @@ Ext.define('Rally.technicalservices.Utilities',{
      * shows accepted work units for timebox
      */
     Ext.define('MilestoneTrackingApp.EstimatedStories', {
-        extend: 'MilestoneTrackingApp.Gauge',
+        extend: 'MilestoneTrackingApp.ConfigurableGauge',
         alias:'widget.statsbannerestimatedstories',
-        requires: ['Rally.util.Colors'],
-
-        tpl: [
-            '<div class="expanded-widget">',
-            '<div class="stat-title">Estimated Stories</div>',
-            '<div class="stat-metric">',
-            '<div class="metric-chart"></div>',
-            '<div class="metric-chart-text percent-offset">',
-            '{percentage}<div class="metric-percent">%</div>',
-            '</div>',
-            '<div class="metric-subtext">{accepted} of {total} {unit}</div>',
-            '</div>',
-            '</div>',
-            '<div class="collapsed-widget">',
-            '<div class="stat-title">Estimated Stories</div>',
-            '<div class="stat-metric">{percentage}<span class="metric-percent">%</span></div>',
-            '</div>'
-        ],
-
         config: {
+            calculatedUnitFilter: null,
+            totalUnitFilter: null,
             data: {
                 percentage: 0,
-                accepted: 0,
-                total: 0,
-                unit: ''
+                calculatedUnits: 0,
+                totalUnits: 0,
+                byCount: false
             }
-        },
-
-        onDataChanged: function () {
-            Deft.Promise.all([
-                this.getEstimatedData(),
-                this.getTimeboxData()
-            ]).then({
-                success: this._onDataAssembled,
-                scope: this
-            });
-        },
-
-        getChartEl: function() {
-            return this.getEl().down('.metric-chart');
-        },
-
-        _getTimeboxUnits: function() {
-            return '';
         },
 
         _getRenderData: function() {
-            var data = _.merge(
-                {unit: this._getTimeboxUnits()},
-                this.acceptanceData,
-                this.timeboxData
-            );
 
-            data.accepted = Ext.util.Format.round(data.accepted, 2);
-            data.total = Ext.util.Format.round(data.total, 2);
-            data.percentage = Math.round((data.accepted / data.total) * 100) || 0;
+            console.log('_getRenderData', this.byCount);
+            var total = 0,
+                estimated = 0;
 
-            return data;
-        },
-
-        _onDataAssembled: function (results) {
-            this.acceptanceData = results[0];
-            this.timeboxData = results[1];
-
-            var renderData = this._getRenderData();
-            this.update(renderData);
-
-            this.refreshChart(this._getChartConfig(renderData));
-        },
-
-        _getChartConfig: function(renderData) {
-            var color = Rally.util.Colors.cyan,
-                daysRemaining = renderData.remaining / renderData.workdays,
-                percentage = renderData.percentage;
-
-            if (percentage === 100) {
-                color = Rally.util.Colors.lime;
-            } else if (daysRemaining === 0) {
-                color = Rally.util.Colors.blue;
-            }
-
-            return {
-                chartData: {
-                    series: [{
-                        data: [
-                            {
-                                name: 'Accepted Stories',
-                                y: percentage,
-                                color: color
-                            },
-                            {
-                                name: '',
-                                y: 100 - percentage,
-                                color: Rally.util.Colors.grey1
-                            }
-                        ]
-                    }]
+            Ext.Array.each(this.store.getRange(), function(r) {
+                total++;
+                if (r.get('PlanEstimate') && r.get('PlanEstimate') > 0 ){
+                    estimated++;
                 }
+
+            });
+
+            var pct = total === 0 ? 0 : Math.round(estimated / total * 100);
+
+            var data = {
+                percentage: pct,
+                calculatedUnits: estimated,
+                totalUnits: total,
+                unit: this.unitLabel,
+                title: this.title
             };
+            return data;
+
         }
     });
 })();
@@ -1897,7 +1875,7 @@ Ext.define('Rally.technicalservices.Utilities',{
                     xtype: 'rallygrid',
                     model: 'User Story',
                     headerCls: 'leftright-header-text',
-                    columnCfgs: ['FormattedID', 'Name', 'Feature', 'Plan Estimate', 'Iteration', 'Release', 'Project', 'Owner'],
+                    columnCfgs: ['FormattedID', 'Name', 'Feature', 'PlanEstimate', 'Iteration', 'Release', 'Project', 'Owner'],
                     pagingToolbarCfg: {
                         pageSizes: [5, 10, 15]
                     },
@@ -1957,9 +1935,21 @@ Ext.define('Rally.technicalservices.Utilities',{
         },
 
         _getLateStoriesCount: function() {
-            var lateStories = 0;
+            var lateStories = 0,
+                targetDate = Rally.util.DateTime.fromIsoString(this.timeboxRecord.get(this.timeboxEndDateField));
+
             _.each(this.store.getRange(), function(record){
-                lateStories += record.get('LateChildCount');
+                var iteration = record.get('Iteration');
+                if (iteration){
+                    console.log('iteration',iteration, iteration.EndDate, targetDate);
+                    if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
+                        console.log('iteration late', record.get('FormattedID'))
+                        lateStories++;
+                    }
+                } else {
+                    console.log('no iteration', record.get('FormattedID'))
+                    lateStories++;
+                }
             }, this);
             return lateStories;
         },
@@ -1968,61 +1958,61 @@ Ext.define('Rally.technicalservices.Utilities',{
             return {activeCount: this._getLateStoriesCount()};
         },
 
-        _onClickLateStories: function() {
-            var record = this.store.getAt(0);
-            //record = _(this.store.getRange()).filter(function (r) { return r.data.UserStories !== ''; }).first();
-
-            var
-                filters = this._filterPopover(record.data),
-                target = this.getEl();
-            //targetSelector = this.targetSelector;
-            //
-            var store = Ext.create('Rally.data.wsapi.Store', {
-                model: 'UserStory',
-                fetch: ['FormattedID', 'Name', 'Feature', 'Release', 'Iteration', 'Project', 'Owner'],
-                filters: filters,
-                autoLoad: true,
-                pageSize: 5
-            });
-
-            var reloadStoreCallback;
-            Ext.create('Rally.apps.releasetracking.statsbanner.popover.LateStories', {
-                target: target,
-                autoShow: false,
-                record: record,
-                //filters: filters,
-                store: store,
-                headerTitle: 'User Stories Assigned to Later Releases or Iteration',
-                width: 800
-            }).show();
-        },
-
-        _filterPopover: function(record) {
-            return [
-                {
-                    property: 'Feature.Release.Name',
-                    operator: '=',
-                    value: record.Release.Name
-                },
-                {
-                    property: 'DirectChildrenCount',
-                    operator: '=',
-                    value: 0
-                },
-                Rally.data.wsapi.Filter.or([
-                    {
-                        property: 'Iteration.EndDate',
-                        operator: '>',
-                        value: record.Release.ReleaseDate
-                    },
-                    {
-                        property: 'Release.ReleaseDate',
-                        operator: '>',
-                        value: record.Release.ReleaseDate
-                    }
-                ])
-            ];
-        }
+        //_onClickLateStories: function() {
+        //    var record = this.store.getAt(0);
+        //    //record = _(this.store.getRange()).filter(function (r) { return r.data.UserStories !== ''; }).first();
+        //
+        //    var
+        //        filters = this._filterPopover(record.data),
+        //        target = this.getEl();
+        //    //targetSelector = this.targetSelector;
+        //    //
+        //    var store = Ext.create('Rally.data.wsapi.Store', {
+        //        model: 'UserStory',
+        //        fetch: ['FormattedID', 'Name', 'Feature', 'Release', 'Iteration', 'Project', 'Owner'],
+        //        filters: filters,
+        //        autoLoad: true,
+        //        pageSize: 5
+        //    });
+        //
+        //    var reloadStoreCallback;
+        //    Ext.create('Rally.apps.releasetracking.statsbanner.popover.LateStories', {
+        //        target: target,
+        //        autoShow: false,
+        //        record: record,
+        //        //filters: filters,
+        //        store: store,
+        //        headerTitle: 'User Stories Assigned to Later Iterations',
+        //        width: 800
+        //    }).show();
+        //},
+        //
+        //_filterPopover: function(record) {
+        //    return [
+        //        {
+        //            property: 'Feature.Release.Name',
+        //            operator: '=',
+        //            value: record.Release.Name
+        //        },
+        //        {
+        //            property: 'DirectChildrenCount',
+        //            operator: '=',
+        //            value: 0
+        //        },
+        //        Rally.data.wsapi.Filter.or([
+        //            {
+        //                property: 'Iteration.EndDate',
+        //                operator: '>',
+        //                value: record.Release.ReleaseDate
+        //            },
+        //            {
+        //                property: 'Release.ReleaseDate',
+        //                operator: '>',
+        //                value: record.Release.ReleaseDate
+        //            }
+        //        ])
+        //    ];
+        //}
     });
 })();
 (function() {
@@ -2042,13 +2032,26 @@ Ext.define('Rally.technicalservices.Utilities',{
                 percentage: 0,
                 calculatedUnits: 0,
                 totalUnits: 0,
-                unit: 'days',
+                unitLabel: 'days',
                 title: 'Milestone End'
             }
         },
 
         _getRenderData: function() {
 
+            var end_date = this.timeboxRecord.get(this.timeboxEndDateField),
+                today = new Date();
+
+            var total = Rally.util.DateTime.getDifference(end_date, today, 'day');
+
+            var data = {
+                percentage: 0,
+                calculatedUnits: 0,
+                totalUnits: total,
+                unit: this.unitLabel,
+                title: this.title
+            };
+            return data;
         }
         //requires: [
         //    'Rally.util.Timebox',
@@ -2388,9 +2391,9 @@ Ext.define('Rally.technicalservices.Utilities',{
     /**
      * shows burndown for timebox
      */
-    Ext.define('MilestoneTrackingApp.IterationProgress', {
+    Ext.define('MilestoneTrackingApp.MilestoneProgress', {
         extend: 'MilestoneTrackingApp.BannerWidget',
-        alias:'widget.statsbanneriterationprogress',
+        alias:'widget.statsbannermilestoneprogress',
         requires: [
             'Rally.ui.carousel.Carousel',
             //'Rally.apps.releasetracking.statsbanner.iterationprogresscharts.BurndownChart',
@@ -3138,7 +3141,7 @@ Ext.define('Rally.technicalservices.Utilities',{
     Ext.define('technical-services-MilestoneTrackingApp', {
         extend: 'Rally.app.App',
         componentCls: 'iterationtrackingboard',
-
+        logger: new Rally.technicalservices.Logger(),
         settingsScope: 'project',
         autoScroll: false,
 
@@ -3160,6 +3163,8 @@ Ext.define('Rally.technicalservices.Utilities',{
         sModelNames: [],
 
         launch: function(){
+
+            console.log('blah',window.location)
             if(!this.rendered) {
                 this.on('afterrender', this.launch, this, {single: true});
                 return;
@@ -3195,7 +3200,7 @@ Ext.define('Rally.technicalservices.Utilities',{
 
         },
         _getModelNames: function () {
-            return this.sModelNames;
+            return this.sModelNames.concat(['HierarchicalRequirement']);
         },
 
         getSettingsFields: function () {
@@ -3206,14 +3211,26 @@ Ext.define('Rally.technicalservices.Utilities',{
                 label: 'Show Children in any Project'
             });
 
+            fields.push({
+                name: 'showTestCaseMetrics',
+                xtype: 'rallycheckboxfield',
+                label: 'Show Test Case Metrics'
+            });
+
+            fields.push({
+                name: 'showDefectMetrics',
+                xtype: 'rallycheckboxfield',
+                label: 'Show Defect Metrics'
+            });
+
             return fields;
         },
         _getFilters: function(){
             var filters = [];
-            if (this.down('rallymilestonecombobox') && this.down('rallymilestonecombobox').getRecord()){
+            if (this._getTimeBoxRecord()){
                 filters = Rally.data.wsapi.Filter({
                     property: "Milestones",
-                    value: this.down('rallymilestonecombobox').getRecord().get('_ref')
+                    value: this._getTimeBoxRecord().get('_ref')
                 });
             }
             return filters;
@@ -3252,29 +3269,47 @@ Ext.define('Rally.technicalservices.Utilities',{
         },
 
         _getStoryFilters: function(milestoneRef){
-            return Ext.create('Rally.data.wsapi.Filter',{
-                property: 'PortfolioItem.Milestones',
+            var filters =  Ext.create('Rally.data.wsapi.Filter',{
+                property: 'Feature.Milestones',
                 value: this._getMilestoneRef()
+            });
+            return filters.and({
+                property: 'DirectChildrenCount',
+                value: 0
             });
         },
 
         _getOrphanedStoryFilters: function(){
-            return Rally.data.wsapi.Filter.and([{
-                property: 'PortfolioItem',
-                value: "null"
-            },{
-                property: 'Parent',
-                value: "null"
-            },{
+            var filter = Ext.create('Rally.data.wsapi.Filter', {
+            //    property: 'PortfolioItem',
+            //    value: "null"
+            //},{
+            //    property: 'Parent',
+            //    value: "null"
+                property: 'Feature',
+                value: ""
+            });
+            filter = filter.and({
+                property: 'DirectChildrenCount',
+                value: 0
+            });
+            filter = filter.and({
                 property: 'Milestones',
                 value: this._getMilestoneRef()
-            }]);
+            });
+            return filter;
         },
         _getStoreConfigs: function(){
+            var feature_filters = this._getStoryFilters(),
+                orphan_filters = this._getOrphanedStoryFilters(),
+                filters = feature_filters.or(orphan_filters);
+
+            console.log('orphan query',orphan_filters.toString() ,feature_filters.toString());
+            console.log('query', filters.toString());
             return {
                 model: 'HierarchicalRequirement',
-                fetch: ['ObjectID', 'FormattedID', 'ScheduleState', 'PlanEstimate'],
-                filters: Rally.data.wsapi.Filter.or(this._getStoryFilters(),this._getOrphanedStoryFilters())
+                fetch: ['ObjectID', 'FormattedID', 'ScheduleState', 'PlanEstimate','Iteration','Name','StartDate','EndDate'],
+                filters: filters
             };
         },
         _addStatsBanner: function() {
@@ -3320,9 +3355,6 @@ Ext.define('Rally.technicalservices.Utilities',{
                 },
                 listeners: {
                     load: this._onLoad,
-                    //toggle: this._onToggle,
-               //     recordupdate: this._publishContentUpdatedNoDashboardLayout,
-               //     recordcreate: this._publishContentUpdatedNoDashboardLayout,
                     afterrender : function() {
                         console.log("afterrender",this);
                         this.setWidth(this.getWidth()+1);

@@ -15,13 +15,26 @@
                 percentage: 0,
                 calculatedUnits: 0,
                 totalUnits: 0,
-                unit: 'days',
+                unitLabel: 'days',
                 title: 'Milestone End'
             }
         },
 
         _getRenderData: function() {
 
+            var end_date = this.timeboxRecord.get(this.timeboxEndDateField),
+                today = new Date();
+
+            var total = Rally.util.DateTime.getDifference(end_date, today, 'day');
+
+            var data = {
+                percentage: 0,
+                calculatedUnits: 0,
+                totalUnits: total,
+                unit: this.unitLabel,
+                title: this.title
+            };
+            return data;
         }
         //requires: [
         //    'Rally.util.Timebox',

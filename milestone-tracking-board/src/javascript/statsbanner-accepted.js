@@ -9,13 +9,10 @@
         alias:'widget.statsbanneraccepted',
 
         config: {
-            calculatedUnitFilter: null,
-            totalUnitFilter: null,
             data: {
                 percentage: 0,
                 calculatedUnits: 0,
                 totalUnits: 0,
-                unit: '',
                 title: 'Accepted Points',
                 byCount: false
             }
@@ -23,7 +20,6 @@
 
         _getRenderData: function() {
 
-            console.log('_getRenderData', this.byCount);
             var total = 0,
                 accepted_total = 0
                 byCount = this.byCount,
