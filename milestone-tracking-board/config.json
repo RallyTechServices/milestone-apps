@@ -1,7 +1,7 @@
 {
     "name": "Milestone Tracking Board",
     "className": "technical-services-MilestoneTrackingApp",
-    "server": "https://demo-west.rallydev.com",
+    "server": "https://rally1.rallydev.com",
     "sdk": "2.0",
     "apiKey": "_PUT_APIKEY_HERE_",
     "javascript": [
@@ -9,6 +9,8 @@
         "__ts-logger.js",
         "utilities.js",
         "progress-pie-chart.js",
+        "cumulative-flow-calculator.js",
+        "progress-cumulative-flow.js",
         "progress-minimal-pie-chart.js",
         "statsbanner.js",
         "statsbanner-widget.js",

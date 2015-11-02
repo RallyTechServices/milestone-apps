@@ -31,7 +31,6 @@
 
         launch: function(){
 
-            console.log('blah',window.location)
             if(!this.rendered) {
                 this.on('afterrender', this.launch, this, {single: true});
                 return;
@@ -41,6 +40,7 @@
                 scope: this,
                 success: function(records){
                     this.sModelNames = Ext.Array.from(_.first(records).get('TypePath'));
+                    //this.firstPortfolioItemName = _.first(records).get('Name');
                     this._addComponents();
                 },
                 failure: function(msg){
@@ -67,7 +67,7 @@
 
         },
         _getModelNames: function () {
-            return this.sModelNames.concat(['HierarchicalRequirement']);
+            return this.sModelNames.concat(['HierarchicalRequirement','Defect']);
         },
 
         getSettingsFields: function () {
@@ -97,7 +97,7 @@
             if (this._getTimeBoxRecord()){
                 filters = Rally.data.wsapi.Filter({
                     property: "Milestones",
-                    value: this._getTimeBoxRecord().get('_ref')
+                    value: this._getMilestoneRef()
                 });
             }
             return filters;
@@ -135,57 +135,13 @@
             });
         },
 
-        _getStoryFilters: function(milestoneRef){
-            var filters =  Ext.create('Rally.data.wsapi.Filter',{
-                property: 'Feature.Milestones',
-                value: this._getMilestoneRef()
-            });
-            return filters.and({
-                property: 'DirectChildrenCount',
-                value: 0
-            });
-        },
-
-        _getOrphanedStoryFilters: function(){
-            var filter = Ext.create('Rally.data.wsapi.Filter', {
-            //    property: 'PortfolioItem',
-            //    value: "null"
-            //},{
-            //    property: 'Parent',
-            //    value: "null"
-                property: 'Feature',
-                value: ""
-            });
-            filter = filter.and({
-                property: 'DirectChildrenCount',
-                value: 0
-            });
-            filter = filter.and({
-                property: 'Milestones',
-                value: this._getMilestoneRef()
-            });
-            return filter;
-        },
-        _getStoreConfigs: function(){
-            var feature_filters = this._getStoryFilters(),
-                orphan_filters = this._getOrphanedStoryFilters(),
-                filters = feature_filters.or(orphan_filters);
-
-            console.log('orphan query',orphan_filters.toString() ,feature_filters.toString());
-            console.log('query', filters.toString());
-            return {
-                model: 'HierarchicalRequirement',
-                fetch: ['ObjectID', 'FormattedID', 'ScheduleState', 'PlanEstimate','Iteration','Name','StartDate','EndDate'],
-                filters: filters
-            };
-        },
         _addStatsBanner: function() {
 
             this.remove('statsBanner');
             this.down('#banner_box').add({
                 xtype: 'statsbanner',
                 itemId: 'statsBanner',
-                storeConfig: this._getStoreConfigs(),
+                //storeConfig: this._getStoreConfigs(),
                 context: this.getContext(),
                 timeboxRecord: this._getTimeBoxRecord(),
                 timeboxEndDateField: 'TargetDate',
@@ -533,25 +489,6 @@
         _onBoardFilterComplete: function () {
             this.setLoading(false);
         },
-
-        //_onToggle: function (toggleState) {
-        //    var appEl = this.getEl();
-        //
-        //    if (toggleState === 'board') {
-        //        appEl.replaceCls('grid-toggled', 'board-toggled');
-        //    } else {
-        //        appEl.replaceCls('board-toggled', 'grid-toggled');
-        //    }
-        //    this._publishContentUpdated();
-        //},
-
-        //_publishContentUpdated: function () {
-        //    this.fireEvent('contentupdated');
-        //},
-        //
-        //_publishContentUpdatedNoDashboardLayout: function () {
-        //    this.fireEvent('contentupdated', {dashboardLayout: false});
-        //},
 
         getOptions: function() {
             return [

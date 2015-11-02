@@ -60,41 +60,39 @@
             return this.getEl().down('.metric-chart');
         },
 
+        //Override this function in the parent.
         _getRenderData: function() {
-            var totUnits = results[0],
-                calcUnits = results[1],
-                pct = totUnits === 0 ? 0 : Math.round(calcUnits / totUnits * 100);
-
-            var data = {
-                percentage: pct,
-                calculatedUnits: calcUnits,
-                totalUnits: totUnits,
-                unit: 'Points',
-                title: 'PlannedVelocity'
-            };
-            return data;
-
+            return {};
         },
 
         _getChartConfig: function(renderData) {
-            var percentage = renderData.percentage,
-                percentagePlanned = percentage % 100 || 100,
-                color = Rally.util.Colors.cyan_med,
-                secondaryColor = Rally.util.Colors.grey1;
+               var data = [{
+                        name: '',
+                        y: 100,
+                        color: Rally.util.Colors.grey1
+               }];
 
-            if (percentage > 100) {
-                color = Rally.util.Colors.blue;
-                secondaryColor = Rally.util.Colors.cyan;
-            } else if (percentage > 70) {
-                color = Rally.util.Colors.cyan;
-            } else if (percentage === 0) {
-                color = Rally.util.Colors.grey1;
-            }
+                if (!Ext.isEmpty(renderData)){
+                    console.log('_getChartConfig', renderData, renderData.chartData);
+                    if (renderData.chartData && renderData.chartData instanceof Array){
+                        data = renderData.chartData;
+                        console.log('data',data);
+                    } else {
+                        var percentage = renderData.percentage,
+                            percentagePlanned = percentage % 100 || 100,
+                            color = Rally.util.Colors.cyan_med,
+                            secondaryColor = Rally.util.Colors.grey1;
 
-            return {
-                chartData: {
-                    series: [{
-                        data: [
+                        if (percentage > 100) {
+                            color = Rally.util.Colors.blue;
+                            secondaryColor = Rally.util.Colors.cyan;
+                        } else if (percentage > 70) {
+                            color = Rally.util.Colors.cyan;
+                        } else if (percentage === 0) {
+                            color = Rally.util.Colors.grey1;
+                        }
+
+                        data = [
                             {
                                 name: renderData.title + ' Total',
                                 y: percentagePlanned,
@@ -106,6 +104,13 @@
                                 color: secondaryColor
                             }
                         ]
+                    }
+                }
+
+            return {
+                chartData: {
+                    series: [{
+                        data: data
                     }]
                 }
             };
@@ -121,7 +126,7 @@
 
         onRender: function() {
             this.callParent(arguments);
-            if (this.totalUnitFilter === null || this.calculatedUnitFilter === null) {
+            if (this.store.getRange().length === 0) {
                 this._addEmptyChart();
             }
         },
@@ -172,7 +177,7 @@
         },
 
         _addChart: function(chartConfig) {
-            var height = 62;
+            var height = 70;
             this.chart = Ext.create('Rally.ui.chart.Chart', Ext.apply({
                 loadMask: false,
                 renderTo: this.getChartEl(),
@@ -190,12 +195,12 @@
                     plotOptions: {
                         pie: {
                             borderWidth: 0,
-                            center: ['50%', '50%'],
+                            center: ['55%', '20%'],
                             dataLabels: {
                                 enabled: false
                             },
-                            size: height - 4,
-                            innerSize: height - 14,
+                            size: height * .70,
+                            innerSize: height * .60,
                             enableMouseTracking: false, //turns off chart hover, but for tooltips you'll need this on
                             shadow: false
                         }
@@ -230,55 +235,6 @@
                 });
             }
             return this._tzOffsetPromises[projectRef];
-        },
-
-        getAcceptanceData: function () {
-            var acceptanceData = {
-                accepted: 0,
-                total: 0,
-                acceptedCount: 0,
-                count: 0
-            };
-
-            _.each(this.store.getRange(), function (rec) {
-                acceptanceData.accepted += rec.get('AcceptedLeafStoryPlanEstimateTotal');
-                acceptanceData.total += rec.get('LeafStoryPlanEstimateTotal');
-                acceptanceData.acceptedCount += rec.get('AcceptedLeafStoryCount');
-                acceptanceData.count += rec.get('LeafStoryCount');
-            });
-
-            return Deft.Promise.when(acceptanceData);
-        },
-
-        getEstimatedData: function () {
-            var acceptanceData = {
-                accepted: 0,
-                total: 0
-            };
-
-            _.each(this.store.getRange(), function (rec) {
-                acceptanceData.accepted += rec.get('LeafStoryCount') - rec.get('UnEstimatedLeafStoryCount');
-                acceptanceData.total += rec.get('LeafStoryCount');
-            });
-
-            return Deft.Promise.when(acceptanceData);
-        },
-
-        _getScheduleStates: function () {
-            if (this._scheduleStates) {
-                return Deft.Promise.when(this._scheduleStates);
-            } else {
-                return this.store.model.getField('ScheduleState').getAllowedValueStore().load().then({
-                    success: function (records) {
-                        this._scheduleStates = _.map(records, function (record) {
-                            return record.get('StringValue');
-                        });
-                        return this._scheduleStates;
-                    },
-                    scope: this,
-                    requester: this
-                });
-            }
         }
     });
 })();

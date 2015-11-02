@@ -26,15 +26,19 @@
                 acceptedScheduleStates = ['Accepted'];
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                if (!byCount) {
-                    total += r.get('PlanEstimate') || 0;
-                    if (Ext.Array.contains(acceptedScheduleStates, r.get('ScheduleState'))){
-                        accepted_total += r.get('PlanEstimate') || 0;
-                    }
-                } else {
-                    total++;
-                    if (Ext.Array.contains(acceptedScheduleStates, r.get('ScheduleState'))){
-                        accepted_total ++;
+                console.log('record', r.get('FormattedID'),r.get('_type'),r.get('DirectChildrenCount'))
+                var children = r.get('DirectChildrenCount') || 0;
+                if (children === 0){
+                    if (!byCount) {
+                        total += r.get('PlanEstimate') || 0;
+                        if (Ext.Array.contains(acceptedScheduleStates, r.get('ScheduleState'))){
+                            accepted_total += r.get('PlanEstimate') || 0;
+                        }
+                    } else {
+                        total++;
+                        if (Ext.Array.contains(acceptedScheduleStates, r.get('ScheduleState'))){
+                            accepted_total ++;
+                        }
                     }
                 }
 

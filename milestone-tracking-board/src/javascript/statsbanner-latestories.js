@@ -75,17 +75,21 @@
                 targetDate = Rally.util.DateTime.fromIsoString(this.timeboxRecord.get(this.timeboxEndDateField));
 
             _.each(this.store.getRange(), function(record){
-                var iteration = record.get('Iteration');
-                if (iteration){
-                    console.log('iteration',iteration, iteration.EndDate, targetDate);
-                    if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
-                        console.log('iteration late', record.get('FormattedID'))
+                var iteration = record.get('Iteration'),
+                    children = record.get('DirectChildrenCount') || 0;
+                if (children === 0){
+                    if (iteration){
+                        console.log('iteration',iteration, iteration.EndDate, targetDate);
+                        if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
+                            console.log('iteration late', record.get('FormattedID'))
+                            lateStories++;
+                        }
+                    } else {
+                        console.log('no iteration', record.get('FormattedID'))
                         lateStories++;
                     }
-                } else {
-                    console.log('no iteration', record.get('FormattedID'))
-                    lateStories++;
                 }
+
             }, this);
             return lateStories;
         },

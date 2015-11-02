@@ -18,6 +18,7 @@
         stateful: true,
         stateEvents: ['expand', 'collapse'],
         filters: [],
+        firstPortfolioItemName: 'Feature',
 
         config: {
             context: null,
@@ -31,6 +32,8 @@
             {xtype: 'statsbannerestimatedstories', title: "Estimated Stories", unitLabel: "Stories"},
             {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "Stories"},
             {xtype: 'statsbannerlatestories', title: "Late Stories", unitLabel: "Stories"},
+            {xtype: 'statsbannerdefects', title: 'Active Defects', unitLabel: 'Active Defects'},
+            {xtype: 'statsbannertestcases', title: 'Test Cases Passed', unitLabel: 'passed'},
             {xtype: 'statsbannermilestoneprogress', flex: 2},
             {xtype: 'statsbannercollapseexpand', flex: 0}
         ],
@@ -58,37 +61,15 @@
             this.subscribe(this, Rally.Message.objectUpdate, this._update, this);
             this.subscribe(this, Rally.Message.bulkUpdate, this._update, this);
 
-            var fetch = this.storeConfig.fetch,
-                filters = this.storeConfig.filters || [],
-                model = this.storeConfig.model;
+            var filters = this._getBannerFilters();
 
-            this.store = Ext.create('Rally.data.wsapi.Store', {
-                model: model,
+            this.store = Ext.create('Rally.data.wsapi.artifact.Store', {
+                models: ['HierarchicalRequirement','Defect'],
+                fetch: ['ObjectID', 'FormattedID', 'ScheduleState', 'PlanEstimate','Iteration','Name','StartDate','EndDate','State','DirectChildrenCount'],
                 filters: filters,
-                fetch: fetch,
                 context: this.context.getDataContext(),
                 limit: Infinity
             });
-
-            //    Ext.create('Rally.data.wsapi.artifact.Store', {
-            //    models: ['PortfolioItem/Feature'],
-            //    fetch: [
-            //        'Name',
-            //        'PercentDoneByStoryCount', 'PercentDoneByStoryPlanEstimate',
-            //        'Release[Name;ReleaseStartDate;ReleaseDate]',
-            //        'PreliminaryEstimate[Value]',
-            //        'LateChildCount',
-            //        'AcceptedLeafStoryPlanEstimateTotal', 'AcceptedLeafStoryCount',
-            //        'LeafStoryCount', 'LeafStoryPlanEstimateTotal', 'UnEstimatedLeafStoryCount',
-            //        'PlannedStartDate', 'PlannedEndDate', 'ActualStartDate', 'ActualEndDate',
-            //        'UserStories:summary[ScheduleState;PlanEstimate;ScheduleState+Blocked]'
-            //    ],
-            //    useShallowFetch: true,
-            //    filters: this.filters,
-            //    context: this.context.getDataContext(),
-            //    limit: Infinity,
-            //    requester: this
-            //});
 
             //need to configure the items at the instance level, not the class level (i.e. don't use the 'defaults' config)
             this.items = this._configureItems(this.items);
@@ -189,6 +170,17 @@
             if(this._hasTimebox()) {
                 this.store.load();
             }
+        },
+        _getBannerFilters: function(){
+            var filters = Ext.create('Rally.data.wsapi.Filter',{
+                property: 'Milestones',
+                value: this.timeboxRecord.get('_ref')
+            });
+            filters = filters.or({
+                property: 'Requirement.Milestones',
+                value: this.timeboxRecord.get('_ref')
+            });
+            return filters;
         }
     });
 })();

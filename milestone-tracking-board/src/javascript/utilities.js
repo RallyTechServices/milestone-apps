@@ -73,5 +73,17 @@ Ext.define('Rally.technicalservices.Utilities',{
             }
         });
         return deferred;
+    },
+    fetchScheduleStates: function () {
+        return this.store.model.getField('ScheduleState').getAllowedValueStore().load().then({
+            success: function (records) {
+                this._scheduleStates = _.map(records, function (record) {
+                    return record.get('StringValue');
+                });
+                return this._scheduleStates;
+            },
+            scope: this,
+            requester: this
+        });
     }
 });

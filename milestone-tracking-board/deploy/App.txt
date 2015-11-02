@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Oct 28 2015 19:24:42 GMT-0600 (MDT) -->
+    <!--  Build Date: Mon Nov 02 2015 07:39:49 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Oct 28 2015 19:24:42 GMT-0600 (MDT)";
-        var CHECKSUM = 286146206764;
+        var APP_BUILD_DATE = "Mon Nov 02 2015 07:39:49 GMT-0700 (MST)";
+        var CHECKSUM = 308883705926;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -251,6 +251,18 @@ Ext.define('Rally.technicalservices.Utilities',{
             }
         });
         return deferred;
+    },
+    fetchScheduleStates: function () {
+        return this.store.model.getField('ScheduleState').getAllowedValueStore().load().then({
+            success: function (records) {
+                this._scheduleStates = _.map(records, function (record) {
+                    return record.get('StringValue');
+                });
+                return this._scheduleStates;
+            },
+            scope: this,
+            requester: this
+        });
     }
 });
 (function(){
@@ -587,6 +599,261 @@ Ext.define('Rally.technicalservices.Utilities',{
         }
     });
 })();
+Ext.define('MilestoneTrackingApp.CFDCalculator', {
+    extend: 'Rally.data.lookback.calculator.TimeSeriesCalculator',
+    config: {
+        stateFieldName: 'ScheduleState',
+        stateFieldValues: ['Defined', 'In-Progress', 'Completed', 'Accepted']
+    },
+
+    constructor: function(config) {
+        this.initConfig(config);
+        this.callParent(arguments);
+    },
+    runCalculation: function (snapshots) {
+        console.log('snapshots',snapshots);
+        var calculatorConfig = this._prepareCalculatorConfig(),
+            seriesConfig = this._buildSeriesConfig(calculatorConfig);
+
+        var calculator = this.prepareCalculator(calculatorConfig);
+        calculator.addSnapshots(snapshots, this._getStartDate(snapshots), this._getEndDate(snapshots));
+
+        return this._transformLumenizeDataToHighchartsSeries(calculator, seriesConfig);
+    },
+    getMetrics: function() {
+        return _.map(this.getStateFieldValues(), function(stateFieldValue) {
+            return  {
+                as: stateFieldValue,
+                groupByField: this.getStateFieldName(),
+                allowedValues: [stateFieldValue],
+                f: 'groupByCount',
+                display: 'area'
+            };
+        }, this);
+    }
+});
+(function(){
+    var Ext = window.Ext4 || window.Ext;
+
+    Ext.define("MilestoneTrackingApp.CumulativeFlowChart", {
+        alias: "widget.statsbannercumulativeflowchart",
+        extend: "Ext.Container",
+        requires: [ 'Rally.ui.chart.Chart' ],
+        mixins: [
+        //    "MilestoneTrackingApp.IterationProgressMixin",
+          //  "MilestoneTrackingApp.IterationProgressChart"
+        ],
+        cls: 'rally-iteration-progress-cumulative-flow-chart',
+        currentScope: undefined,
+        context: undefined,
+        height: undefined,
+        width: undefined,
+        displayTitle: 'Cumulative Flow',
+        minimalMode: false,
+        initComponent: function() {
+            this.callParent(arguments);
+            console.log('initcomponent')
+            this.add({
+                xtype: 'rallychart',
+                storeType: 'Rally.data.lookback.SnapshotStore',
+                storeConfig: this._getStoreConfig(),
+                calculatorType: 'MilestoneTrackingApp.CFDCalculator',
+                calculatorConfig: {
+                    stateFieldName: 'ScheduleState',
+                    stateFieldValues: ['Defined', 'In-Progress', 'Completed', 'Accepted']
+                },
+                chartColors: [  // RGB values obtained from here: http://ux-blog.rallydev.com/?cat=23
+                    "#C0C0C0",  // $grey4
+                    "#FF8200",  // $orange
+                    "#F6A900",  // $gold
+                    "#FAD200",  // $yellow
+                    "#CADDA3",  // $lime
+                    "#1E7C00"
+                ],
+                chartConfig: this._getChartConfig()
+            });
+
+        },
+        _getStoreConfig: function(){
+            var milestone_oid = this.timeboxRecord.get('ObjectID');
+
+            return {
+                find: {
+                    _TypeHierarchy: { '$in' : [ 'HierarchicalRequirement', 'Defect' ] },
+                    Children: null,
+                    Milestones: {$in: [milestone_oid]},
+                    _ProjectHierarchy: this.context.getProject().ObjectID,
+                    //_ValidFrom: {'$gt': Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(), 'day', -30)) }
+                },
+                fetch: ['ScheduleState'],
+                hydrate: ['ScheduleState'],
+                sort: {
+                    _ValidFrom: 1
+                },
+                context: this.context.getDataContext(),
+                limit: Infinity
+            };
+        },
+        _getChartConfig: function(){
+            console.log('height', this.height);
+
+            return {
+                chart: {
+                    zoomType: 'xy',
+                    height: this.height,
+                    width: this.width,
+                    spacingTop: 2,
+                    spacingRight: 0,
+                    spacingBottom: 8,
+                    spacingLeft: 0,
+                    alignTicks: false,
+                    animation: true,
+                    type: "area",
+                    //events: {
+                    //    click: clickChartHandler
+                    //}
+                },
+                legend: { enabled: false },
+                title: {
+                    text: ''
+                },
+                xAxis: {
+                    tickmarkPlacement: 'on',
+                    tickInterval: 20,
+                    title: {
+                        text: null
+                    }
+                },
+                yAxis: [{
+                    title: {
+                        text: null
+                    },
+                    min: 0,
+                    labels: { enabled: false }
+                }],
+                plotOptions: {
+                    series: {
+                        animation: true,
+                        marker: {
+                            enabled: false,
+                            states: {
+                                hover: {
+                                    enabled: false
+                                }
+                            }
+                        }
+                    },
+                    area: {
+                        stacking: 'normal'
+                    }
+                }
+            };
+        },
+        _createMinimalConfig: function(){
+            var config = this._createChartConfig();
+            delete config.chartConfig.xAxis;
+            delete config.chartConfig.yAxis;
+
+            return Ext.Object.merge(config, {
+                chartConfig: {
+                    tooltip: {
+                        formatter: function() {
+                            return false;
+                        }
+                    },
+                    legend: { enabled: false },
+                    xAxis: {
+                        labels: { enabled: false },
+                        tickPositions: []
+                    },
+                    yAxis: [{
+                        title: {
+                            text: null
+                        },
+                        min: 0,
+                        labels: { enabled: false }
+                    }],
+                    title: { text: null }
+                }
+            });
+        },
+
+        _createChartConfig: function(overrides) {
+            var clickChartHandler = _.isFunction(this.clickHandler) ? this.clickHandler : Ext.emptyFn;
+
+            return Ext.Object.merge({
+                xtype: 'rallychart',
+                updateAfterRender: Ext.bind(this._onLoad, this),
+
+                chartColors: [  // RGB values obtained from here: http://ux-blog.rallydev.com/?cat=23
+                    "#C0C0C0",  // $grey4
+                    "#FF8200",  // $orange
+                    "#F6A900",  // $gold
+                    "#FAD200",  // $yellow
+                    "#CADDA3",  // $lime
+                    "#1E7C00"
+                ],
+                chartConfig: {
+                    chart: {
+                        height: this.height,
+                        width: this.width,
+                        spacingTop: 2,
+                        spacingRight: 0,
+                        spacingBottom: 8,
+                        spacingLeft: 0,
+                        alignTicks: false,
+                        animation: true,
+                        type: "area",
+                        events: {
+                            click: clickChartHandler
+                        }
+                    },
+                    plotOptions: {
+                        series: {
+                            animation: true,
+                            marker: {
+                                enabled: false,
+                                states: {
+                                    hover: {
+                                        enabled: false
+                                    }
+                                }
+                            }
+                        },
+                        area: {
+                            point: {
+                                events: {
+                                    click: clickChartHandler
+                                }
+                            },
+                            stacking: 'normal'
+                        }
+                    },
+                    legend: {
+                        enabled: true
+                    },
+                    title: { text: null },
+                    xAxis: {
+                        tickmarkPlacement: 'on',
+                        tickInterval: 1
+                    },
+                    yAxis: [{
+                        title: { text: null },
+                        min: 0,
+                        labels: {
+                            style: { color: "#005eb8" }
+                        }
+                    }]
+                },
+                chartData: {
+                    categories: [],
+                    series: []
+                }
+            }, overrides || {});
+        }
+    });
+
+})();
 (function(){
     var Ext = window.Ext4 || window.Ext;
 
@@ -812,6 +1079,7 @@ Ext.define('Rally.technicalservices.Utilities',{
         stateful: true,
         stateEvents: ['expand', 'collapse'],
         filters: [],
+        firstPortfolioItemName: 'Feature',
 
         config: {
             context: null,
@@ -825,6 +1093,8 @@ Ext.define('Rally.technicalservices.Utilities',{
             {xtype: 'statsbannerestimatedstories', title: "Estimated Stories", unitLabel: "Stories"},
             {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "Stories"},
             {xtype: 'statsbannerlatestories', title: "Late Stories", unitLabel: "Stories"},
+            {xtype: 'statsbannerdefects', title: 'Active Defects', unitLabel: 'Active Defects'},
+            {xtype: 'statsbannertestcases', title: 'Test Cases Passed', unitLabel: 'passed'},
             {xtype: 'statsbannermilestoneprogress', flex: 2},
             {xtype: 'statsbannercollapseexpand', flex: 0}
         ],
@@ -852,37 +1122,15 @@ Ext.define('Rally.technicalservices.Utilities',{
             this.subscribe(this, Rally.Message.objectUpdate, this._update, this);
             this.subscribe(this, Rally.Message.bulkUpdate, this._update, this);
 
-            var fetch = this.storeConfig.fetch,
-                filters = this.storeConfig.filters || [],
-                model = this.storeConfig.model;
+            var filters = this._getBannerFilters();
 
-            this.store = Ext.create('Rally.data.wsapi.Store', {
-                model: model,
+            this.store = Ext.create('Rally.data.wsapi.artifact.Store', {
+                models: ['HierarchicalRequirement','Defect'],
+                fetch: ['ObjectID', 'FormattedID', 'ScheduleState', 'PlanEstimate','Iteration','Name','StartDate','EndDate','State','DirectChildrenCount'],
                 filters: filters,
-                fetch: fetch,
                 context: this.context.getDataContext(),
                 limit: Infinity
             });
-
-            //    Ext.create('Rally.data.wsapi.artifact.Store', {
-            //    models: ['PortfolioItem/Feature'],
-            //    fetch: [
-            //        'Name',
-            //        'PercentDoneByStoryCount', 'PercentDoneByStoryPlanEstimate',
-            //        'Release[Name;ReleaseStartDate;ReleaseDate]',
-            //        'PreliminaryEstimate[Value]',
-            //        'LateChildCount',
-            //        'AcceptedLeafStoryPlanEstimateTotal', 'AcceptedLeafStoryCount',
-            //        'LeafStoryCount', 'LeafStoryPlanEstimateTotal', 'UnEstimatedLeafStoryCount',
-            //        'PlannedStartDate', 'PlannedEndDate', 'ActualStartDate', 'ActualEndDate',
-            //        'UserStories:summary[ScheduleState;PlanEstimate;ScheduleState+Blocked]'
-            //    ],
-            //    useShallowFetch: true,
-            //    filters: this.filters,
-            //    context: this.context.getDataContext(),
-            //    limit: Infinity,
-            //    requester: this
-            //});
 
             //need to configure the items at the instance level, not the class level (i.e. don't use the 'defaults' config)
             this.items = this._configureItems(this.items);
@@ -983,6 +1231,17 @@ Ext.define('Rally.technicalservices.Utilities',{
             if(this._hasTimebox()) {
                 this.store.load();
             }
+        },
+        _getBannerFilters: function(){
+            var filters = Ext.create('Rally.data.wsapi.Filter',{
+                property: 'Milestones',
+                value: this.timeboxRecord.get('_ref')
+            });
+            filters = filters.or({
+                property: 'Requirement.Milestones',
+                value: this.timeboxRecord.get('_ref')
+            });
+            return filters;
         }
     });
 })();
@@ -1322,41 +1581,39 @@ Ext.define('Rally.technicalservices.Utilities',{
             return this.getEl().down('.metric-chart');
         },
 
+        //Override this function in the parent.
         _getRenderData: function() {
-            var totUnits = results[0],
-                calcUnits = results[1],
-                pct = totUnits === 0 ? 0 : Math.round(calcUnits / totUnits * 100);
-
-            var data = {
-                percentage: pct,
-                calculatedUnits: calcUnits,
-                totalUnits: totUnits,
-                unit: 'Points',
-                title: 'PlannedVelocity'
-            };
-            return data;
-
+            return {};
         },
 
         _getChartConfig: function(renderData) {
-            var percentage = renderData.percentage,
-                percentagePlanned = percentage % 100 || 100,
-                color = Rally.util.Colors.cyan_med,
-                secondaryColor = Rally.util.Colors.grey1;
+               var data = [{
+                        name: '',
+                        y: 100,
+                        color: Rally.util.Colors.grey1
+               }];
 
-            if (percentage > 100) {
-                color = Rally.util.Colors.blue;
-                secondaryColor = Rally.util.Colors.cyan;
-            } else if (percentage > 70) {
-                color = Rally.util.Colors.cyan;
-            } else if (percentage === 0) {
-                color = Rally.util.Colors.grey1;
-            }
+                if (!Ext.isEmpty(renderData)){
+                    console.log('_getChartConfig', renderData, renderData.chartData);
+                    if (renderData.chartData && renderData.chartData instanceof Array){
+                        data = renderData.chartData;
+                        console.log('data',data);
+                    } else {
+                        var percentage = renderData.percentage,
+                            percentagePlanned = percentage % 100 || 100,
+                            color = Rally.util.Colors.cyan_med,
+                            secondaryColor = Rally.util.Colors.grey1;
 
-            return {
-                chartData: {
-                    series: [{
-                        data: [
+                        if (percentage > 100) {
+                            color = Rally.util.Colors.blue;
+                            secondaryColor = Rally.util.Colors.cyan;
+                        } else if (percentage > 70) {
+                            color = Rally.util.Colors.cyan;
+                        } else if (percentage === 0) {
+                            color = Rally.util.Colors.grey1;
+                        }
+
+                        data = [
                             {
                                 name: renderData.title + ' Total',
                                 y: percentagePlanned,
@@ -1368,6 +1625,13 @@ Ext.define('Rally.technicalservices.Utilities',{
                                 color: secondaryColor
                             }
                         ]
+                    }
+                }
+
+            return {
+                chartData: {
+                    series: [{
+                        data: data
                     }]
                 }
             };
@@ -1383,7 +1647,7 @@ Ext.define('Rally.technicalservices.Utilities',{
 
         onRender: function() {
             this.callParent(arguments);
-            if (this.totalUnitFilter === null || this.calculatedUnitFilter === null) {
+            if (this.store.getRange().length === 0) {
                 this._addEmptyChart();
             }
         },
@@ -1434,7 +1698,7 @@ Ext.define('Rally.technicalservices.Utilities',{
         },
 
         _addChart: function(chartConfig) {
-            var height = 62;
+            var height = 70;
             this.chart = Ext.create('Rally.ui.chart.Chart', Ext.apply({
                 loadMask: false,
                 renderTo: this.getChartEl(),
@@ -1452,12 +1716,12 @@ Ext.define('Rally.technicalservices.Utilities',{
                     plotOptions: {
                         pie: {
                             borderWidth: 0,
-                            center: ['50%', '50%'],
+                            center: ['55%', '20%'],
                             dataLabels: {
                                 enabled: false
                             },
-                            size: height - 4,
-                            innerSize: height - 14,
+                            size: height * .70,
+                            innerSize: height * .60,
                             enableMouseTracking: false, //turns off chart hover, but for tooltips you'll need this on
                             shadow: false
                         }
@@ -1492,55 +1756,6 @@ Ext.define('Rally.technicalservices.Utilities',{
                 });
             }
             return this._tzOffsetPromises[projectRef];
-        },
-
-        getAcceptanceData: function () {
-            var acceptanceData = {
-                accepted: 0,
-                total: 0,
-                acceptedCount: 0,
-                count: 0
-            };
-
-            _.each(this.store.getRange(), function (rec) {
-                acceptanceData.accepted += rec.get('AcceptedLeafStoryPlanEstimateTotal');
-                acceptanceData.total += rec.get('LeafStoryPlanEstimateTotal');
-                acceptanceData.acceptedCount += rec.get('AcceptedLeafStoryCount');
-                acceptanceData.count += rec.get('LeafStoryCount');
-            });
-
-            return Deft.Promise.when(acceptanceData);
-        },
-
-        getEstimatedData: function () {
-            var acceptanceData = {
-                accepted: 0,
-                total: 0
-            };
-
-            _.each(this.store.getRange(), function (rec) {
-                acceptanceData.accepted += rec.get('LeafStoryCount') - rec.get('UnEstimatedLeafStoryCount');
-                acceptanceData.total += rec.get('LeafStoryCount');
-            });
-
-            return Deft.Promise.when(acceptanceData);
-        },
-
-        _getScheduleStates: function () {
-            if (this._scheduleStates) {
-                return Deft.Promise.when(this._scheduleStates);
-            } else {
-                return this.store.model.getField('ScheduleState').getAllowedValueStore().load().then({
-                    success: function (records) {
-                        this._scheduleStates = _.map(records, function (record) {
-                            return record.get('StringValue');
-                        });
-                        return this._scheduleStates;
-                    },
-                    scope: this,
-                    requester: this
-                });
-            }
         }
     });
 })();
@@ -1572,15 +1787,19 @@ Ext.define('Rally.technicalservices.Utilities',{
                 acceptedScheduleStates = ['Accepted'];
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                if (!byCount) {
-                    total += r.get('PlanEstimate') || 0;
-                    if (Ext.Array.contains(acceptedScheduleStates, r.get('ScheduleState'))){
-                        accepted_total += r.get('PlanEstimate') || 0;
-                    }
-                } else {
-                    total++;
-                    if (Ext.Array.contains(acceptedScheduleStates, r.get('ScheduleState'))){
-                        accepted_total ++;
+                console.log('record', r.get('FormattedID'),r.get('_type'),r.get('DirectChildrenCount'))
+                var children = r.get('DirectChildrenCount') || 0;
+                if (children === 0){
+                    if (!byCount) {
+                        total += r.get('PlanEstimate') || 0;
+                        if (Ext.Array.contains(acceptedScheduleStates, r.get('ScheduleState'))){
+                            accepted_total += r.get('PlanEstimate') || 0;
+                        }
+                    } else {
+                        total++;
+                        if (Ext.Array.contains(acceptedScheduleStates, r.get('ScheduleState'))){
+                            accepted_total ++;
+                        }
                     }
                 }
 
@@ -1741,10 +1960,13 @@ Ext.define('Rally.technicalservices.Utilities',{
                 closedStates = ['Closed'];
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                if (!Ext.Array.contains(closedStates, r.get('State'))){
-                    active++;
+                if (r.get('_type').toLowerCase() === 'defect'){
+                    if (!Ext.Array.contains(closedStates, r.get('State'))){
+                        active++;
+                    }
+                    total++;
                 }
-                total++
+
             });
 
             var pct = total === 0 ? 0 : Math.round(active / total * 100);
@@ -1761,10 +1983,91 @@ Ext.define('Rally.technicalservices.Utilities',{
         }
     });
 })();
-/**
- * Created by kcorkan on 10/28/15.
- */
+(function() {
+    var Ext = window.Ext4 || window.Ext;
 
+    /**
+     * shows accepted work units for timebox
+     */
+    Ext.define('MilestoneTrackingApp.TestCases', {
+        extend: 'MilestoneTrackingApp.ConfigurableGauge',
+        alias:'widget.statsbannertestcases',
+
+        config: {
+            data: {
+                percentage: 0,
+                calculatedUnits: 0,
+                totalUnits: 0,
+                title: 'Test Status'
+            }
+        },
+
+        initComponent: function() {
+
+            var filters = Ext.create('Rally.data.wsapi.Filter',{
+                property: 'WorkProduct.Milestones',
+                value: this.timeboxRecord.get('_ref')
+            });
+
+            this.store = Ext.create('Rally.data.wsapi.Store',{
+                model: 'TestCase',
+                fetch: ['LastRun','LastVerdict'],
+                filters: filters
+            });
+
+            this.callParent(arguments);
+            this.store.load();
+        },
+        _getRenderData: function() {
+            console.log('_renderData testcasesa', this.store.getRange());
+            var total = 0,
+                passed = 0,
+                executed = 0;
+
+            if (this.store.getRange().length == 0){
+                return {};
+            }
+
+            Ext.Array.each(this.store.getRange(), function(r) {
+                console.log('testCases', r.get('FormattedID'));
+                if (r.get('LastRun')){
+                    executed++;
+                    if (r.get('LastVerdict') === "Pass"){
+                        passed++;
+                    }
+                }
+                total++;
+            });
+
+
+            var data = [{
+                    name: 'Total',
+                    y: total - executed,
+                    color: Rally.util.Colors.grey1
+                },{
+                    name: 'Executed',
+                    y: executed - passed,
+                    color: "#FAD200"
+                },{
+                    name: 'Passed',
+                    y: passed,
+                    color: '#8DC63F'
+                }];
+
+            var pct = total === 0 ? 0 : Math.round(passed / total * 100);
+            var data = {
+                chartData: data,
+                title: this.title,
+                unit: this.unitLabel,
+                calculatedUnits: passed,
+                totalUnits: total,
+                percentage: pct
+            };
+            return data;
+
+        }
+    });
+})();
 (function() {
     var Ext = window.Ext4 || window.Ext;
 
@@ -1841,11 +2144,13 @@ Ext.define('Rally.technicalservices.Utilities',{
                 estimated = 0;
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                total++;
-                if (r.get('PlanEstimate') && r.get('PlanEstimate') > 0 ){
-                    estimated++;
+                var children = r.get('DirectChildrenCount') || 0;
+                if (children === 0) {
+                    total++;
+                    if (r.get('PlanEstimate') && r.get('PlanEstimate') > 0) {
+                        estimated++;
+                    }
                 }
-
             });
 
             var pct = total === 0 ? 0 : Math.round(estimated / total * 100);
@@ -1939,17 +2244,21 @@ Ext.define('Rally.technicalservices.Utilities',{
                 targetDate = Rally.util.DateTime.fromIsoString(this.timeboxRecord.get(this.timeboxEndDateField));
 
             _.each(this.store.getRange(), function(record){
-                var iteration = record.get('Iteration');
-                if (iteration){
-                    console.log('iteration',iteration, iteration.EndDate, targetDate);
-                    if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
-                        console.log('iteration late', record.get('FormattedID'))
+                var iteration = record.get('Iteration'),
+                    children = record.get('DirectChildrenCount') || 0;
+                if (children === 0){
+                    if (iteration){
+                        console.log('iteration',iteration, iteration.EndDate, targetDate);
+                        if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
+                            console.log('iteration late', record.get('FormattedID'))
+                            lateStories++;
+                        }
+                    } else {
+                        console.log('no iteration', record.get('FormattedID'))
                         lateStories++;
                     }
-                } else {
-                    console.log('no iteration', record.get('FormattedID'))
-                    lateStories++;
                 }
+
             }, this);
             return lateStories;
         },
@@ -2397,9 +2706,9 @@ Ext.define('Rally.technicalservices.Utilities',{
         requires: [
             'Rally.ui.carousel.Carousel',
             //'Rally.apps.releasetracking.statsbanner.iterationprogresscharts.BurndownChart',
-            //'Rally.apps.releasetracking.statsbanner.iterationprogresscharts.CumulativeFlowChart',
-            'MilestoneTrackingApp.MinimalPieChart',
-            'MilestoneTrackingApp.PieChart',
+            'MilestoneTrackingApp.CumulativeFlowChart',
+            //'MilestoneTrackingApp.MinimalPieChart',
+            //'MilestoneTrackingApp.PieChart',
             'MilestoneTrackingApp.IterationProgressDialog',
             'Ext.state.Manager'
         ],
@@ -2444,10 +2753,11 @@ Ext.define('Rally.technicalservices.Utilities',{
 
             this.carouselItems = [
                 {
-                    xtype: 'statsbannerminimalpiechart',
+                    xtype: 'statsbannercumulativeflowchart',
                     width: 150,
                     height: 60,
                     minimalMode: true,
+                    timeboxRecord: this.timeboxRecord,
                     clickHandler: boundClickHandler,
                     context: this.context,
                     store: this.store
@@ -2526,10 +2836,7 @@ Ext.define('Rally.technicalservices.Utilities',{
             }
         },
         _getTimebox: function(){
-            if (this.getContext().getTimeboxScope() && this.getContext().getTimeboxScope().getRecord()){
-                return this.getContext().getTimeboxScope().getRecord();
-            }
-            return null;
+            return this.timeboxRecord || null;
         },
         applyState: function (state) {
             if (state){
@@ -2549,7 +2856,7 @@ Ext.define('Rally.technicalservices.Utilities',{
 
         onDataChanged: function() {
             this._cleanupCarousel();
-
+            console.log('onDataChanged')
             if(this.rendered) {
                 if (this._getTimebox()) {
                     this.update();
@@ -2949,8 +3256,8 @@ Ext.define('Rally.technicalservices.Utilities',{
         extend: "Ext.Container",
         requires: [ 'Rally.ui.chart.Chart' ],
         mixins: [
-            "MilestoneTrackingApp.IterationProgressMixin",
-            "MilestoneTrackingApp.IterationProgressChart"
+        //    "MilestoneTrackingApp.IterationProgressMixin",
+          //  "MilestoneTrackingApp.IterationProgressChart"
         ],
         cls: 'rally-iteration-progress-cumulative-flow-chart',
         currentScope: undefined,
@@ -2961,29 +3268,103 @@ Ext.define('Rally.technicalservices.Utilities',{
         minimalMode: false,
         initComponent: function() {
             this.callParent(arguments);
-
-            Ext.Ajax.request({
-                url: '/slm/charts/icfc.sp',
-                params: {
-                    iterationOid: this.context.getTimeboxScope().getRecord().getId(),
-                    cpoid: this.context.getProject().ObjectID,
-                    bigChart: true
+            console.log('initcomponent')
+            this.add({
+                xtype: 'rallychart',
+                storeType: 'Rally.data.lookback.SnapshotStore',
+                storeConfig: this._getStoreConfig(),
+                calculatorType: 'MilestoneTrackingApp.CFDCalculator',
+                calculatorConfig: {
+                    stateFieldName: 'ScheduleState',
+                    stateFieldValues: ['Defined', 'In-Progress', 'Completed', 'Accepted']
                 },
-                method: 'GET',
-                withCredentials: true,
-                success: function(response, request) {
-                    this._loadData(response.responseText);
-                },
-                requester: this,
-                scope: this
+                chartColors: [  // RGB values obtained from here: http://ux-blog.rallydev.com/?cat=23
+                    "#C0C0C0",  // $grey4
+                    "#FF8200",  // $orange
+                    "#F6A900",  // $gold
+                    "#FAD200",  // $yellow
+                    "#CADDA3",  // $lime
+                    "#1E7C00"
+                ],
+                chartConfig: this._getChartConfig()
             });
-        },
 
-        _loadData: function(chartData) {
-            var xmlDoc = this._createChartDatafromXML(chartData);
-            this._createCumulativeFlowChartDatafromXML(xmlDoc);
         },
+        _getStoreConfig: function(){
+            var milestone_oid = this.timeboxRecord.get('ObjectID');
 
+            return {
+                find: {
+                    _TypeHierarchy: { '$in' : [ 'HierarchicalRequirement', 'Defect' ] },
+                    Children: null,
+                    Milestones: {$in: [milestone_oid]},
+                    _ProjectHierarchy: this.context.getProject().ObjectID,
+                    //_ValidFrom: {'$gt': Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(), 'day', -30)) }
+                },
+                fetch: ['ScheduleState'],
+                hydrate: ['ScheduleState'],
+                sort: {
+                    _ValidFrom: 1
+                },
+                context: this.context.getDataContext(),
+                limit: Infinity
+            };
+        },
+        _getChartConfig: function(){
+            console.log('height', this.height);
+
+            return {
+                chart: {
+                    zoomType: 'xy',
+                    height: this.height,
+                    width: this.width,
+                    spacingTop: 2,
+                    spacingRight: 0,
+                    spacingBottom: 8,
+                    spacingLeft: 0,
+                    alignTicks: false,
+                    animation: true,
+                    type: "area",
+                    //events: {
+                    //    click: clickChartHandler
+                    //}
+                },
+                legend: { enabled: false },
+                title: {
+                    text: ''
+                },
+                xAxis: {
+                    tickmarkPlacement: 'on',
+                    tickInterval: 20,
+                    title: {
+                        text: null
+                    }
+                },
+                yAxis: [{
+                    title: {
+                        text: null
+                    },
+                    min: 0,
+                    labels: { enabled: false }
+                }],
+                plotOptions: {
+                    series: {
+                        animation: true,
+                        marker: {
+                            enabled: false,
+                            states: {
+                                hover: {
+                                    enabled: false
+                                }
+                            }
+                        }
+                    },
+                    area: {
+                        stacking: 'normal'
+                    }
+                }
+            };
+        },
         _createMinimalConfig: function(){
             var config = this._createChartConfig();
             delete config.chartConfig.xAxis;
@@ -3085,48 +3466,6 @@ Ext.define('Rally.technicalservices.Utilities',{
                     series: []
                 }
             }, overrides || {});
-        },
-
-        _createCumulativeFlowChartDatafromXML: function (xmlDoc) {
-
-            this.chartComponentConfig = this.minimalMode ? this._createMinimalConfig() : this._createChartConfig();
-
-            var xmlChartData = xmlDoc.getElementsByTagName("chart_data")[0];
-
-            var rows = xmlChartData.getElementsByTagName("row");
-            var i, j;
-            this.chartComponentConfig.chartData.categories = this._getStringValues(rows[0].getElementsByTagName("string")); // categories
-            for(j=rows.length-1, i = 0 ; j > 0; j--,i++) {
-                this.chartComponentConfig.chartData.series[i] = {};
-                this.chartComponentConfig.chartData.series[i].data = this._getNumberValues(rows[j].getElementsByTagName("number"));
-                this.chartComponentConfig.chartData.series[i].name = this._getStringValues(rows[j].getElementsByTagName("string"))[0];
-            }
-
-            // the 'max' y axis value in the xml isn't correct, so we'll calculate it ourselves...
-            this.chartComponentConfig.chartConfig.yAxis[0].max = this._computeMaxYAxisValue(this.chartComponentConfig.chartData.series);
-
-            this._configureYAxisIntervals();
-
-
-            // Use number of ScheduleState values to show as a surrogate for with of the legend text.
-            if(this.chartComponentConfig.chartData.series.length === 6) {
-                this.chartComponentConfig.chartConfig.legend.itemStyle = { fontSize: '8px'};
-            } else if(this.chartComponentConfig.chartData.series.length === 5) {
-                this.chartComponentConfig.chartConfig.legend.itemStyle = { fontSize: '10px'};
-            } // else it will default to 12px
-
-            this.chartComponentConfig.chartConfig.xAxis.tickInterval = Math.floor(this.chartComponentConfig.chartData.series[0].data.length / 4);
-
-            this.add(this.chartComponentConfig);
-        },
-
-
-        _onLoad: function() {
-            this.fireEvent('contentupdated', this);
-            this.fireEvent('ready', this);
-            if (Rally.BrowserTest) {
-                Rally.BrowserTest.publishComponentReady(this);
-            }
         }
     });
 
@@ -3164,7 +3503,6 @@ Ext.define('Rally.technicalservices.Utilities',{
 
         launch: function(){
 
-            console.log('blah',window.location)
             if(!this.rendered) {
                 this.on('afterrender', this.launch, this, {single: true});
                 return;
@@ -3174,6 +3512,7 @@ Ext.define('Rally.technicalservices.Utilities',{
                 scope: this,
                 success: function(records){
                     this.sModelNames = Ext.Array.from(_.first(records).get('TypePath'));
+                    //this.firstPortfolioItemName = _.first(records).get('Name');
                     this._addComponents();
                 },
                 failure: function(msg){
@@ -3200,7 +3539,7 @@ Ext.define('Rally.technicalservices.Utilities',{
 
         },
         _getModelNames: function () {
-            return this.sModelNames.concat(['HierarchicalRequirement']);
+            return this.sModelNames.concat(['HierarchicalRequirement','Defect']);
         },
 
         getSettingsFields: function () {
@@ -3230,7 +3569,7 @@ Ext.define('Rally.technicalservices.Utilities',{
             if (this._getTimeBoxRecord()){
                 filters = Rally.data.wsapi.Filter({
                     property: "Milestones",
-                    value: this._getTimeBoxRecord().get('_ref')
+                    value: this._getMilestoneRef()
                 });
             }
             return filters;
@@ -3268,57 +3607,13 @@ Ext.define('Rally.technicalservices.Utilities',{
             });
         },
 
-        _getStoryFilters: function(milestoneRef){
-            var filters =  Ext.create('Rally.data.wsapi.Filter',{
-                property: 'Feature.Milestones',
-                value: this._getMilestoneRef()
-            });
-            return filters.and({
-                property: 'DirectChildrenCount',
-                value: 0
-            });
-        },
-
-        _getOrphanedStoryFilters: function(){
-            var filter = Ext.create('Rally.data.wsapi.Filter', {
-            //    property: 'PortfolioItem',
-            //    value: "null"
-            //},{
-            //    property: 'Parent',
-            //    value: "null"
-                property: 'Feature',
-                value: ""
-            });
-            filter = filter.and({
-                property: 'DirectChildrenCount',
-                value: 0
-            });
-            filter = filter.and({
-                property: 'Milestones',
-                value: this._getMilestoneRef()
-            });
-            return filter;
-        },
-        _getStoreConfigs: function(){
-            var feature_filters = this._getStoryFilters(),
-                orphan_filters = this._getOrphanedStoryFilters(),
-                filters = feature_filters.or(orphan_filters);
-
-            console.log('orphan query',orphan_filters.toString() ,feature_filters.toString());
-            console.log('query', filters.toString());
-            return {
-                model: 'HierarchicalRequirement',
-                fetch: ['ObjectID', 'FormattedID', 'ScheduleState', 'PlanEstimate','Iteration','Name','StartDate','EndDate'],
-                filters: filters
-            };
-        },
         _addStatsBanner: function() {
 
             this.remove('statsBanner');
             this.down('#banner_box').add({
                 xtype: 'statsbanner',
                 itemId: 'statsBanner',
-                storeConfig: this._getStoreConfigs(),
+                //storeConfig: this._getStoreConfigs(),
                 context: this.getContext(),
                 timeboxRecord: this._getTimeBoxRecord(),
                 timeboxEndDateField: 'TargetDate',
@@ -3667,25 +3962,6 @@ Ext.define('Rally.technicalservices.Utilities',{
             this.setLoading(false);
         },
 
-        //_onToggle: function (toggleState) {
-        //    var appEl = this.getEl();
-        //
-        //    if (toggleState === 'board') {
-        //        appEl.replaceCls('grid-toggled', 'board-toggled');
-        //    } else {
-        //        appEl.replaceCls('board-toggled', 'grid-toggled');
-        //    }
-        //    this._publishContentUpdated();
-        //},
-
-        //_publishContentUpdated: function () {
-        //    this.fireEvent('contentupdated');
-        //},
-        //
-        //_publishContentUpdatedNoDashboardLayout: function () {
-        //    this.fireEvent('contentupdated', {dashboardLayout: false});
-        //},
-
         getOptions: function() {
             return [
                 {
@@ -3816,7 +4092,7 @@ Ext.define('Rally.technicalservices.Utilities',{
 .stats-banner .stat-panel .stat-metric {
     color: #666666;
     font-family: ProximaNovaLight, Helvetica, Arial;
-    font-size: 18px;
+    font-size: 16px;
     height: 85px;
     padding-top: 20px;
 }
@@ -3834,15 +4110,17 @@ Ext.define('Rally.technicalservices.Utilities',{
     position: absolute;
     top: 22px;
     width: 100%;
+    height: 75px;
 }
 .stats-banner .stat-panel .stat-metric .metric-subtext {
-    bottom: 7px;
+    bottom: 0px;
     color: #888888;
     font-family: ProximaNova, Helvetica, Arial;
     font-size: 11px;
     position: absolute;
     text-transform: lowercase;
     width: 100%;
+    height: 20px;
 }
 .stats-banner .stat-panel .stat-metric .metric-chart-text {
     position: absolute;
@@ -3886,6 +4164,7 @@ Ext.define('Rally.technicalservices.Utilities',{
     cursor: pointer;
 }
 .stats-banner .stat-panel .gauge .chart .highcharts-container {
+    height: 75px;
     cursor: default;
 }
 .stats-banner .stat-panel .header {

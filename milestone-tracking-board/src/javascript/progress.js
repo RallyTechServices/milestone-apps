@@ -10,9 +10,9 @@
         requires: [
             'Rally.ui.carousel.Carousel',
             //'Rally.apps.releasetracking.statsbanner.iterationprogresscharts.BurndownChart',
-            //'Rally.apps.releasetracking.statsbanner.iterationprogresscharts.CumulativeFlowChart',
-            'MilestoneTrackingApp.MinimalPieChart',
-            'MilestoneTrackingApp.PieChart',
+            'MilestoneTrackingApp.CumulativeFlowChart',
+            //'MilestoneTrackingApp.MinimalPieChart',
+            //'MilestoneTrackingApp.PieChart',
             'MilestoneTrackingApp.IterationProgressDialog',
             'Ext.state.Manager'
         ],
@@ -57,10 +57,11 @@
 
             this.carouselItems = [
                 {
-                    xtype: 'statsbannerminimalpiechart',
+                    xtype: 'statsbannercumulativeflowchart',
                     width: 150,
                     height: 60,
                     minimalMode: true,
+                    timeboxRecord: this.timeboxRecord,
                     clickHandler: boundClickHandler,
                     context: this.context,
                     store: this.store
@@ -139,10 +140,7 @@
             }
         },
         _getTimebox: function(){
-            if (this.getContext().getTimeboxScope() && this.getContext().getTimeboxScope().getRecord()){
-                return this.getContext().getTimeboxScope().getRecord();
-            }
-            return null;
+            return this.timeboxRecord || null;
         },
         applyState: function (state) {
             if (state){
@@ -162,7 +160,7 @@
 
         onDataChanged: function() {
             this._cleanupCarousel();
-
+            console.log('onDataChanged')
             if(this.rendered) {
                 if (this._getTimebox()) {
                     this.update();

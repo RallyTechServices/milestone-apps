@@ -25,11 +25,13 @@
                 estimated = 0;
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                total++;
-                if (r.get('PlanEstimate') && r.get('PlanEstimate') > 0 ){
-                    estimated++;
+                var children = r.get('DirectChildrenCount') || 0;
+                if (children === 0) {
+                    total++;
+                    if (r.get('PlanEstimate') && r.get('PlanEstimate') > 0) {
+                        estimated++;
+                    }
                 }
-
             });
 
             var pct = total === 0 ? 0 : Math.round(estimated / total * 100);

@@ -24,10 +24,13 @@
                 closedStates = ['Closed'];
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                if (!Ext.Array.contains(closedStates, r.get('State'))){
-                    active++;
+                if (r.get('_type').toLowerCase() === 'defect'){
+                    if (!Ext.Array.contains(closedStates, r.get('State'))){
+                        active++;
+                    }
+                    total++;
                 }
-                total++
+
             });
 
             var pct = total === 0 ? 0 : Math.round(active / total * 100);
