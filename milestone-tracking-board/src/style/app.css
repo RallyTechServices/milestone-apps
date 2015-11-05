@@ -15,7 +15,22 @@
     margin-right: 5px;
     cursor: pointer;
 }
-
+.selector-msg {
+    color: #222222;
+    font-family: ProximaNovaSemiBold,Helvetica,Arial;
+    font-size: 14px;
+    margin-top: 0px;
+    margin-left: 15px;
+    display: inline-block;
+}
+.latestories{
+    color: #222222;
+    font-family: ProximaNovaSemiBold,Helvetica,Arial;
+    font-size: 14px;
+    display: inline-block;
+    margin-left: 5px;
+    margin-right: 25px;
+}
 .iterationtrackingboard {
     overflow-y: hidden;
 }

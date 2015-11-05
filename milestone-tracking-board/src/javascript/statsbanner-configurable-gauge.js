@@ -17,18 +17,18 @@
 
         tpl: [
             '<div class="expanded-widget">',
-            '<div class="stat-title">{title}</div>',
-            '<div class="stat-metric">',
-            '<div class="metric-chart"></div>',
-            '<div class="metric-chart-text percent-offset">',
-            '{percentage}<div class="metric-percent">%</div>',
-            '</div>',
-            '<div class="metric-subtext">{calculatedUnits} of {totalUnits} {unit}</div>',
-            '</div>',
+                '<div class="stat-title">{title}</div>',
+                '<div class="stat-metric">',
+                    '<div class="metric-chart"></div>',
+                    '<div class="metric-chart-text percent-offset">',
+                        '{percentage}<div class="metric-percent">%</div>',
+                    '</div>',
+                    '<div class="metric-subtext">{calculatedUnits} of {totalUnits} {unit}<tpl if="secondaryUnit">, {secondaryCalculatedUnits} of {totalUnits} {secondaryUnit}</tpl></div>',
+                '</div>',
             '</div>',
             '<div class="collapsed-widget">',
-            '<div class="stat-title">{title}</div>',
-            '<div class="stat-metric">{percentage}<span class="metric-percent">%</span></div>',
+                '<div class="stat-title">{title}</div>',
+                '<div class="stat-metric">{percentage}<span class="metric-percent">%</span></div>',
             '</div>'
         ],
 
@@ -40,7 +40,7 @@
                 calculatedUnits: 0,
                 totalUnits: 0,
                 unit: '',
-                title: 'Gauge'
+                title: ''
             }
         },
 

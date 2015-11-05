@@ -38,11 +38,7 @@
             var total = 0,
                 passed = 0,
                 executed = 0;
-
-            if (this.store.getRange().length == 0){
-                return {};
-            }
-
+            
             Ext.Array.each(this.store.getRange(), function(r) {
                 console.log('testCases', r.get('FormattedID'));
                 if (r.get('LastRun')){
@@ -76,7 +72,9 @@
                 unit: this.unitLabel,
                 calculatedUnits: passed,
                 totalUnits: total,
-                percentage: pct
+                percentage: pct,
+                secondaryCalculatedUnits: executed,
+                secondaryUnit: "executed"
             };
             return data;
 

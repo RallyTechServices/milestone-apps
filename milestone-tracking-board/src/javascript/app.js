@@ -54,9 +54,9 @@
             });
             cb.on('change', this._update, this);
 
-            var tpl = new Ext.XTemplate('<tpl if="days &gt;= 0">{days} days remaining until target date',
+            var tpl = new Ext.XTemplate('<div class="selector-msg"><tpl if="days &gt;= 0">{days} days remaining until target date',
                 '<tpl elseif="days &lt; 0">{days*(-1)} days past target date',
-                '<tpl else>No target date set for milestone</tpl>');
+                '<tpl else>No target date set for milestone</tpl></div>');
 
             this.down('#selection_box').add({
                 xtype: 'container',
@@ -66,11 +66,17 @@
             });
 
 
-            var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0">{latestories} Late Stories<tpl else></tpl>')
+            var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0"><div class="picto icon-warning warning" style="color:#FAD200;font-size:16px;"></div>',
+                '<div class="latestories">{latestories} Late Stories</div></tpl>')
+
+           // var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0">{latestories} Late Stories<tpl else></tpl>')
             this.down('#selection_box').add({
                 xtype: 'container',
                 itemId: 'late-stories',
                 flex: 1,
+                style: {
+                    textAlign: 'right'
+                },
                 tpl: lt_tpl
             });
         },

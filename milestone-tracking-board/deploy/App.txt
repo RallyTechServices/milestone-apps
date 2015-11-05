@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Nov 04 2015 21:23:15 GMT-0700 (MST) -->
+    <!--  Build Date: Thu Nov 05 2015 08:30:43 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Nov 04 2015 21:23:15 GMT-0700 (MST)";
-        var CHECKSUM = 323857573941;
+        var APP_BUILD_DATE = "Thu Nov 05 2015 08:30:43 GMT-0700 (MST)";
+        var CHECKSUM = 327660835907;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1089,11 +1089,9 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         items: [
             {xtype: 'statsbanneraccepted', byCount: false,  title: 'Accepted Points', unitLabel: "Points"},
-           // {xtype: 'statsbannertimeboxend', title: "Remaining Days", unitLabel: "Days"},
             {xtype: 'statsbannerestimatedstories', title: "Estimated Stories", unitLabel: "Stories"},
             {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "Stories"},
-          //  {xtype: 'statsbannerlatestories', title: "Late Stories", unitLabel: "Stories"},
-            {xtype: 'statsbannerdefects', title: 'Active Defects', unitLabel: 'Active Defects'},
+            {xtype: 'statsbannerdefects', title: 'Active Defects', unitLabel: ' Defects'},
             {xtype: 'statsbannertestcases', title: 'Test Cases Passed', unitLabel: 'passed'},
             {xtype: 'statsbannermilestoneprogress', flex: 2},
             {xtype: 'statsbannercollapseexpand', flex: 0}
@@ -1563,18 +1561,18 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         tpl: [
             '<div class="expanded-widget">',
-            '<div class="stat-title">{title}</div>',
-            '<div class="stat-metric">',
-            '<div class="metric-chart"></div>',
-            '<div class="metric-chart-text percent-offset">',
-            '{percentage}<div class="metric-percent">%</div>',
-            '</div>',
-            '<div class="metric-subtext">{calculatedUnits} of {totalUnits} {unit}</div>',
-            '</div>',
+                '<div class="stat-title">{title}</div>',
+                '<div class="stat-metric">',
+                    '<div class="metric-chart"></div>',
+                    '<div class="metric-chart-text percent-offset">',
+                        '{percentage}<div class="metric-percent">%</div>',
+                    '</div>',
+                    '<div class="metric-subtext">{calculatedUnits} of {totalUnits} {unit}<tpl if="secondaryUnit">, {secondaryCalculatedUnits} of {totalUnits} {secondaryUnit}</tpl></div>',
+                '</div>',
             '</div>',
             '<div class="collapsed-widget">',
-            '<div class="stat-title">{title}</div>',
-            '<div class="stat-metric">{percentage}<span class="metric-percent">%</span></div>',
+                '<div class="stat-title">{title}</div>',
+                '<div class="stat-metric">{percentage}<span class="metric-percent">%</span></div>',
             '</div>'
         ],
 
@@ -1586,7 +1584,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 calculatedUnits: 0,
                 totalUnits: 0,
                 unit: '',
-                title: 'Gauge'
+                title: ''
             }
         },
 
@@ -2048,11 +2046,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             var total = 0,
                 passed = 0,
                 executed = 0;
-
-            if (this.store.getRange().length == 0){
-                return {};
-            }
-
+            
             Ext.Array.each(this.store.getRange(), function(r) {
                 console.log('testCases', r.get('FormattedID'));
                 if (r.get('LastRun')){
@@ -2086,7 +2080,9 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 unit: this.unitLabel,
                 calculatedUnits: passed,
                 totalUnits: total,
-                percentage: pct
+                percentage: pct,
+                secondaryCalculatedUnits: executed,
+                secondaryUnit: "executed"
             };
             return data;
 
@@ -3551,9 +3547,9 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             });
             cb.on('change', this._update, this);
 
-            var tpl = new Ext.XTemplate('<tpl if="days &gt;= 0">{days} days remaining until target date',
+            var tpl = new Ext.XTemplate('<div class="selector-msg"><tpl if="days &gt;= 0">{days} days remaining until target date',
                 '<tpl elseif="days &lt; 0">{days*(-1)} days past target date',
-                '<tpl else>No target date set for milestone</tpl>');
+                '<tpl else>No target date set for milestone</tpl></div>');
 
             this.down('#selection_box').add({
                 xtype: 'container',
@@ -3563,11 +3559,17 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             });
 
 
-            var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0">{latestories} Late Stories<tpl else></tpl>')
+            var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0"><div class="picto icon-warning warning" style="color:#FAD200;font-size:16px;"></div>',
+                '<div class="latestories">{latestories} Late Stories</div></tpl>')
+
+           // var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0">{latestories} Late Stories<tpl else></tpl>')
             this.down('#selection_box').add({
                 xtype: 'container',
                 itemId: 'late-stories',
                 flex: 1,
+                style: {
+                    textAlign: 'right'
+                },
                 tpl: lt_tpl
             });
         },
@@ -4079,7 +4081,22 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
     margin-right: 5px;
     cursor: pointer;
 }
-
+.selector-msg {
+    color: #222222;
+    font-family: ProximaNovaSemiBold,Helvetica,Arial;
+    font-size: 14px;
+    margin-top: 0px;
+    margin-left: 15px;
+    display: inline-block;
+}
+.latestories{
+    color: #222222;
+    font-family: ProximaNovaSemiBold,Helvetica,Arial;
+    font-size: 14px;
+    display: inline-block;
+    margin-left: 5px;
+    margin-right: 25px;
+}
 .iterationtrackingboard {
     overflow-y: hidden;
 }

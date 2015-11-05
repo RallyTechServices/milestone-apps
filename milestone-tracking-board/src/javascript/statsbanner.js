@@ -28,11 +28,9 @@
 
         items: [
             {xtype: 'statsbanneraccepted', byCount: false,  title: 'Accepted Points', unitLabel: "Points"},
-           // {xtype: 'statsbannertimeboxend', title: "Remaining Days", unitLabel: "Days"},
             {xtype: 'statsbannerestimatedstories', title: "Estimated Stories", unitLabel: "Stories"},
             {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "Stories"},
-          //  {xtype: 'statsbannerlatestories', title: "Late Stories", unitLabel: "Stories"},
-            {xtype: 'statsbannerdefects', title: 'Active Defects', unitLabel: 'Active Defects'},
+            {xtype: 'statsbannerdefects', title: 'Active Defects', unitLabel: ' Defects'},
             {xtype: 'statsbannertestcases', title: 'Test Cases Passed', unitLabel: 'passed'},
             {xtype: 'statsbannermilestoneprogress', flex: 2},
             {xtype: 'statsbannercollapseexpand', flex: 0}
