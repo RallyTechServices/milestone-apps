@@ -28,10 +28,10 @@
 
         items: [
             {xtype: 'statsbanneraccepted', byCount: false,  title: 'Accepted Points', unitLabel: "Points"},
-            {xtype: 'statsbannertimeboxend', title: "Remaining Days", unitLabel: "Days"},
+           // {xtype: 'statsbannertimeboxend', title: "Remaining Days", unitLabel: "Days"},
             {xtype: 'statsbannerestimatedstories', title: "Estimated Stories", unitLabel: "Stories"},
             {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "Stories"},
-            {xtype: 'statsbannerlatestories', title: "Late Stories", unitLabel: "Stories"},
+          //  {xtype: 'statsbannerlatestories', title: "Late Stories", unitLabel: "Stories"},
             {xtype: 'statsbannerdefects', title: 'Active Defects', unitLabel: 'Active Defects'},
             {xtype: 'statsbannertestcases', title: 'Test Cases Passed', unitLabel: 'passed'},
             {xtype: 'statsbannermilestoneprogress', flex: 2},
@@ -76,10 +76,35 @@
 
             this.on('expand', this._onExpand, this);
             this.on('collapse', this._onCollapse, this);
+            this.store.on('load', this._checkForLateStories, this);
             this.callParent(arguments);
             this._update();
         },
+        _checkForLateStories: function(store){
+            var lateStories = 0,
+                targetDate = Rally.util.DateTime.fromIsoString(this.timeboxRecord.get(this.timeboxEndDateField));
 
+            _.each(this.store.getRange(), function(record){
+                var iteration = record.get('Iteration'),
+                    children = record.get('DirectChildrenCount') || 0;
+                if (children === 0){
+                    if (iteration){
+                        console.log('iteration',iteration, iteration.EndDate, targetDate);
+                        if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
+                            console.log('iteration late', record.get('FormattedID'))
+                            lateStories++;
+                        }
+                    } else {
+                        console.log('no iteration', record.get('FormattedID'))
+                        lateStories++;
+                    }
+                }
+
+            }, this);
+            if (lateStories > 0){
+                this.fireEvent('latestoriesfound', lateStories);
+            }
+        },
         onRender: function() {
             if (this.expanded) {
                 this.removeCls('collapsed');

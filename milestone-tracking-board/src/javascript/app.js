@@ -53,11 +53,37 @@
                 xtype: 'rallymilestonecombobox'
             });
             cb.on('change', this._update, this);
+
+            var tpl = new Ext.XTemplate('<tpl if="days &gt;= 0">{days} days remaining until target date',
+                '<tpl elseif="days &lt; 0">{days*(-1)} days past target date',
+                '<tpl else>No target date set for milestone</tpl>');
+
+            this.down('#selection_box').add({
+                xtype: 'container',
+                itemId: 'remaining-days',
+                flex: 1,
+                tpl: tpl
+            });
+
+
+            var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0">{latestories} Late Stories<tpl else></tpl>')
+            this.down('#selection_box').add({
+                xtype: 'container',
+                itemId: 'late-stories',
+                flex: 1,
+                tpl: lt_tpl
+            });
         },
         _update: function(){
 
             this.down('#banner_box').removeAll();
             this.down('#grid_box').removeAll();
+
+            var rec = this._getTimeBoxRecord();
+            if (rec){
+                var days = Rally.util.DateTime.getDifference(Rally.util.DateTime.fromIsoString(rec.get('TargetDate')),new Date(), 'day');
+                this.down('#remaining-days').update({days: days});
+            }
 
             this._addStatsBanner();
             this._getGridStore().then({
@@ -134,7 +160,10 @@
                 }
             });
         },
-
+        _updateLateStories: function(latestories){
+            this.logger.log('_updateLateStories', latestories);
+            this.down('#late-stories').update({latestories: latestories});
+        },
         _addStatsBanner: function() {
 
             this.remove('statsBanner');
@@ -149,7 +178,8 @@
                 margin: '0 0 5px 0',
                 listeners: {
                     resize: this._resizeGridBoardToFillSpace,
-                    scope: this
+                    scope: this,
+                    latestoriesfound: this._updateLateStories
                 }
             });
         },
@@ -158,7 +188,7 @@
             var context = this.getContext();
 
             // gridStore.setParentTypes(this.sModelNames);
-            gridStore.load();
+           // gridStore.load();
 
             //this.remove('gridBoard');
 
@@ -170,6 +200,9 @@
                 plugins: this._getGridBoardPlugins(),
                 modelNames: this._getModelNames(),
                 gridConfig: this._getGridConfig(gridStore),
+                storeConfig: {
+                    filters: this._getFilters()
+                },
                 addNewPluginConfig: {
                     style: {
                         'float': 'left',
@@ -216,7 +249,6 @@
                 stateId: 'iteration-tracking-owner-filter-' + this.getAppId()
             });
 
-
             plugins.push({
                 ptype: 'rallygridboardfieldpicker',
                 headerPosition: 'left',
@@ -252,7 +284,19 @@
                 ['Parent', 'Tasks', 'Defects', 'Discussion', 'PlanEstimate', 'Iteration']
             });
 
-
+            plugins.push({
+                ptype: 'rallygridboardcustomfiltercontrol',
+                filterControlConfig: {
+                    modelNames: this._getModelNames(),
+                    stateful: true,
+                    stateId: context.getScopedStateId('tracking-filters')
+                },
+                showOwnerFilter: true,
+                ownerFilterControlConfig: {
+                    stateful: true,
+                    stateId: context.getScopedStateId('tracking-owner-filter')
+                }
+            });
 
             return plugins;
         },
