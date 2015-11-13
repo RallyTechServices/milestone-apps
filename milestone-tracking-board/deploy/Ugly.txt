@@ -3,10 +3,10 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Nov 05 2015 08:30:43 GMT-0700 (MST) -->
+    <!--  Build Date: Thu Nov 12 2015 18:09:45 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Nov 05 2015 08:30:43 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Thu Nov 12 2015 18:09:45 GMT-0700 (MST)";
         var CHECKSUM = [%= checksum %];
     </script>
     
@@ -174,7 +174,7 @@
     width: 100%;
 }
 .stats-banner .stat-panel .stat-metric .metric-chart-text.percent-offset {
-    left: 3px;
+    left: 10px;
     top: 41px;
 }
 .stats-banner .stat-panel .stat-metric .stat-secondary {

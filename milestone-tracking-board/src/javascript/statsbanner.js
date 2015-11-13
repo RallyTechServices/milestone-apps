@@ -28,10 +28,10 @@
 
         items: [
             {xtype: 'statsbanneraccepted', byCount: false,  title: 'Accepted Points', unitLabel: "Points"},
-            {xtype: 'statsbannerestimatedstories', title: "Estimated Stories", unitLabel: "Stories"},
-            {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "Stories"},
+            {xtype: 'statsbannerestimatedstories', title: "Estimated Work Items", unitLabel: "Work Items"},
+            {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "work items"},
             {xtype: 'statsbannerdefects', title: 'Active Defects', unitLabel: ' Defects'},
-            {xtype: 'statsbannertestcases', title: 'Test Cases Passed', unitLabel: 'passed'},
+            {xtype: 'statsbannertestcases', title: 'Test Cases Passed', unitLabel: 'executed'},
             {xtype: 'statsbannermilestoneprogress', flex: 2},
             {xtype: 'statsbannercollapseexpand', flex: 0}
         ],

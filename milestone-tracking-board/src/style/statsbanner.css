@@ -72,7 +72,7 @@
     width: 100%;
 }
 .stats-banner .stat-panel .stat-metric .metric-chart-text.percent-offset {
-    left: 3px;
+    left: 10px;
     top: 41px;
 }
 .stats-banner .stat-panel .stat-metric .stat-secondary {

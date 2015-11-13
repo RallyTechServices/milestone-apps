@@ -23,7 +23,7 @@
                     '<div class="metric-chart-text percent-offset">',
                         '{percentage}<div class="metric-percent">%</div>',
                     '</div>',
-                    '<div class="metric-subtext">{calculatedUnits} of {totalUnits} {unit}<tpl if="secondaryUnit">, {secondaryCalculatedUnits} of {totalUnits} {secondaryUnit}</tpl></div>',
+                    '<div class="metric-subtext">{calculatedUnits} of {totalUnits} {unit}<tpl if="secondaryUnit">, {secondaryCalculatedUnits} of {secondaryTotalUnits} {secondaryUnit}</tpl></div>',
                 '</div>',
             '</div>',
             '<div class="collapsed-widget">',

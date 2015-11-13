@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Nov 05 2015 08:30:43 GMT-0700 (MST) -->
+    <!--  Build Date: Thu Nov 12 2015 18:09:45 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Nov 05 2015 08:30:43 GMT-0700 (MST)";
-        var CHECKSUM = 327660835907;
+        var APP_BUILD_DATE = "Thu Nov 12 2015 18:09:45 GMT-0700 (MST)";
+        var CHECKSUM = 328834457003;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1089,10 +1089,10 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         items: [
             {xtype: 'statsbanneraccepted', byCount: false,  title: 'Accepted Points', unitLabel: "Points"},
-            {xtype: 'statsbannerestimatedstories', title: "Estimated Stories", unitLabel: "Stories"},
-            {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "Stories"},
+            {xtype: 'statsbannerestimatedstories', title: "Estimated Work Items", unitLabel: "Work Items"},
+            {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "work items"},
             {xtype: 'statsbannerdefects', title: 'Active Defects', unitLabel: ' Defects'},
-            {xtype: 'statsbannertestcases', title: 'Test Cases Passed', unitLabel: 'passed'},
+            {xtype: 'statsbannertestcases', title: 'Test Cases Passed', unitLabel: 'executed'},
             {xtype: 'statsbannermilestoneprogress', flex: 2},
             {xtype: 'statsbannercollapseexpand', flex: 0}
         ],
@@ -1567,7 +1567,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     '<div class="metric-chart-text percent-offset">',
                         '{percentage}<div class="metric-percent">%</div>',
                     '</div>',
-                    '<div class="metric-subtext">{calculatedUnits} of {totalUnits} {unit}<tpl if="secondaryUnit">, {secondaryCalculatedUnits} of {totalUnits} {secondaryUnit}</tpl></div>',
+                    '<div class="metric-subtext">{calculatedUnits} of {totalUnits} {unit}<tpl if="secondaryUnit">, {secondaryCalculatedUnits} of {secondaryTotalUnits} {secondaryUnit}</tpl></div>',
                 '</div>',
             '</div>',
             '<div class="collapsed-widget">',
@@ -2046,7 +2046,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             var total = 0,
                 passed = 0,
                 executed = 0;
-            
+
             Ext.Array.each(this.store.getRange(), function(r) {
                 console.log('testCases', r.get('FormattedID'));
                 if (r.get('LastRun')){
@@ -2078,11 +2078,12 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 chartData: data,
                 title: this.title,
                 unit: this.unitLabel,
-                calculatedUnits: passed,
+                calculatedUnits: executed,
                 totalUnits: total,
                 percentage: pct,
-                secondaryCalculatedUnits: executed,
-                secondaryUnit: "executed"
+                secondaryCalculatedUnits: passed,
+                secondaryTotalUnits: executed,
+                secondaryUnit: "passed"
             };
             return data;
 
@@ -3543,12 +3544,14 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         },
         _addComponents: function(){
             var cb = this.down('#selection_box').add({
-                xtype: 'rallymilestonecombobox'
+                xtype: 'rallymilestonecombobox',
+                stateful: true,
+                stateId: this.getContext().getScopedStateId('milestone-cb')
             });
             cb.on('change', this._update, this);
 
             var tpl = new Ext.XTemplate('<div class="selector-msg"><tpl if="days &gt;= 0">{days} days remaining until target date',
-                '<tpl elseif="days &lt; 0">{days*(-1)} days past target date',
+                '<tpl elseif="days &lt; 0"><span style="color:red;">{days*(-1)} days past target date</span>',
                 '<tpl else>No target date set for milestone</tpl></div>');
 
             this.down('#selection_box').add({
@@ -4214,7 +4217,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
     width: 100%;
 }
 .stats-banner .stat-panel .stat-metric .metric-chart-text.percent-offset {
-    left: 3px;
+    left: 10px;
     top: 41px;
 }
 .stats-banner .stat-panel .stat-metric .stat-secondary {

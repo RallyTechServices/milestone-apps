@@ -50,12 +50,14 @@
         },
         _addComponents: function(){
             var cb = this.down('#selection_box').add({
-                xtype: 'rallymilestonecombobox'
+                xtype: 'rallymilestonecombobox',
+                stateful: true,
+                stateId: this.getContext().getScopedStateId('milestone-cb')
             });
             cb.on('change', this._update, this);
 
             var tpl = new Ext.XTemplate('<div class="selector-msg"><tpl if="days &gt;= 0">{days} days remaining until target date',
-                '<tpl elseif="days &lt; 0">{days*(-1)} days past target date',
+                '<tpl elseif="days &lt; 0"><span style="color:red;">{days*(-1)} days past target date</span>',
                 '<tpl else>No target date set for milestone</tpl></div>');
 
             this.down('#selection_box').add({
