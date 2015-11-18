@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Nov 12 2015 18:09:45 GMT-0700 (MST) -->
+    <!--  Build Date: Wed Nov 18 2015 12:12:20 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Nov 12 2015 18:09:45 GMT-0700 (MST)";
-        var CHECKSUM = 328834457003;
+        var APP_BUILD_DATE = "Wed Nov 18 2015 12:12:20 GMT-0700 (MST)";
+        var CHECKSUM = 316668866838;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -179,6 +179,7 @@ Ext.define('Rally.technicalservices.Logger',{
 Ext.define('Rally.technicalservices.Utilities',{
     singleton: true,
     fetchPortfolioTypes: function(){
+        console.log('fetchPortfolioItemTypes')
         var deferred = Ext.create('Deft.Deferred');
 
         var typeStore = Ext.create('Rally.data.wsapi.Store', {
@@ -202,8 +203,10 @@ Ext.define('Rally.technicalservices.Utilities',{
         typeStore.load({
             scope: this,
             callback: function (records, operation, success) {
+                console.log('callback', operation, success);
                 if (success){
                     deferred.resolve(records);
+
                 } else {
                     deferred.reject("Error loading Portfolio Item Types:  " + operation.error.errors.join(','));
                 }
@@ -252,19 +255,148 @@ Ext.define('Rally.technicalservices.Utilities',{
         });
         return deferred;
     },
-    fetchScheduleStates: function () {
-        return this.store.model.getField('ScheduleState').getAllowedValueStore().load().then({
-            success: function (records) {
-                this._scheduleStates = _.map(records, function (record) {
-                    return record.get('StringValue');
+    fetchScheduleStates: function(){
+        var deferred = Ext.create('Deft.Deferred');
+        Rally.data.ModelFactory.getModel({
+            type: 'HierarchicalRequirement',
+            success: function(model) {
+                var field = model.getField('ScheduleState');
+                field.getAllowedValueStore().load({
+                    callback: function(records, operation, success) {
+                        if (success){
+                            var values = [];
+                            for (var i=0; i < records.length ; i++){
+                                values.push(records[i].get('StringValue'));
+                            }
+                            deferred.resolve(values);
+                        } else {
+                            deferred.reject('Error loading ScheduleState values for User Story:  ' + operation.error.errors.join(','));
+                        }
+                    },
+                    scope: this
                 });
-                return this._scheduleStates;
             },
-            scope: this,
-            requester: this
+            failure: function() {
+                var error = "Could not load schedule states";
+                deferred.reject(error);
+            }
         });
+        return deferred.promise;
     }
 });
+(function () {
+    var Ext = window.Ext4 || window.Ext;
+
+    Ext.define("MilestoneTrackingApp.IterationProgressChart", {
+        requires: [
+            "Rally.ui.chart.Chart"
+        ],
+
+        chartComponentConfig: {
+            xtype: "rallychart",
+            suppressClientMetrics: true /* keeps rallychart::lookback query time from displaying in client metrics */
+        }
+    });
+}());
+(function () {
+    var Ext = window.Ext4 || window.Ext;
+
+    Ext.define("MilestoneTrackingApp.IterationProgressMixin", {
+        requires: [
+            "Rally.ui.chart.Chart"
+        ],
+
+        _configureYAxis: function(ticks, axis) {
+
+            var intervalY = (this.chartComponentConfig.chartConfig.yAxis[axis].max - 0) / (ticks - 1);
+            var ticksY = [];
+            for (var i = 0; i < ticks; i++) {
+                ticksY.push(i * intervalY);
+            }
+            this.chartComponentConfig.chartConfig.yAxis[axis].tickPositions = ticksY;
+        },
+
+        _configureYAxisIntervals: function () {
+            var ticks = 5; // not much chart space, limit to 5
+            this._configureYAxis(ticks, 0);
+            if(this.chartType === "burndown") { // cumulative flow only has y axis 0
+                this._configureYAxis(ticks, 1);
+            }
+        },
+
+        _getElementValue: function (element) {
+            if (element.textContent !== undefined) {
+                return element.textContent;
+            }
+            return element.text;
+        },
+
+        _getStringValues: function (elements) {
+            var i;
+            var strings = [];
+            for (i = 0; i < elements.length; i++) {
+                strings.push(this._getElementValue(elements[i]));
+            }
+            return strings;
+        },
+
+        _getNumberValues: function (elements) {
+            var i;
+            var numbers = [];
+            for (i = 0; i < elements.length; i++) {
+                if(this._getElementValue(elements[i])) {
+                    numbers.push(this._getElementValue(elements[i]).split(' ')[0] * 1);
+                } else {
+                    numbers.push(0);
+                }
+
+            }
+            return numbers;
+        },
+
+        _computeMaxYAxisValue: function(series) {
+            var i, j, max = 0.0;
+            // sum each day's values and find the largest sum
+            for(i=0; i < series[0].data.length; i++) {
+                var val = 0.0;
+                for(j=0; j < series.length; j++) {
+                    // if is for insurance, _should_ always be true
+                    if(series[j].data.length === series[0].data.length) {
+                        val += series[j].data[i];
+                    }
+                }
+                if(val > max) {
+                    max = val;
+                }
+            }
+            max = Math.ceil(max / 4) * 4;  // round up to multiple of 4 so we will create 5 integral tick marks
+
+            return (max === 0) ? 4 : max;
+        },
+
+        _createChartDatafromXML: function (xml) {
+            var parseXml;
+
+            if (typeof window.DOMParser !== "undefined") {
+                parseXml = function (xmlStr) {
+                    return ( new window.DOMParser() ).parseFromString(xmlStr, "text/xml");
+                };
+            } else if (typeof window.ActiveXObject !== "undefined" &&
+                new window.ActiveXObject("Microsoft.XMLDOM")) {
+                parseXml = function (xmlStr) {
+                    var xmlDoc = new window.ActiveXObject("Microsoft.XMLDOM");
+                    xmlDoc.async = "false";
+                    xmlDoc.loadXML(xmlStr);
+                    return xmlDoc;
+                };
+            } else {
+                throw new Error("No XML parser found");
+            }
+
+            return parseXml(xml);
+        }
+    });
+}());
 (function(){
     var Ext = window.Ext4 || window.Ext;
 
@@ -599,6 +731,80 @@ Ext.define('Rally.technicalservices.Utilities',{
         }
     });
 })();
+(function() {
+    var Ext = window.Ext4 || window.Ext;
+
+    /**
+     * A ComboBox for choosing a milestone
+     *
+     *     @example
+     *     Ext.create('Ext.Container', {
+     *         items: [{
+     *             xtype: 'rallymilestonecombobox'
+     *          }],
+     *          renderTo: Ext.getBody().dom
+     *     });
+     */
+    Ext.define('Rally.ui.combobox.MilestoneComboBox', {
+        extend: 'Rally.ui.combobox.ComboBox',
+        alias: 'widget.rallymilestonecombobox',
+        requires: [
+            'Rally.util.DateTime',
+            'Rally.data.util.Sorter'
+        ],
+
+        mixins: [
+            'Rally.ui.MilestoneListHeadings'
+        ],
+
+        config: {
+            allowNoEntry: false,
+            hideLabel: true,
+            width: 300,
+            storeConfig: {
+                autoLoad: true,
+                model: Ext.identityFn('milestone'),
+                remoteFilter: false,
+                remoteSort: false,
+                limit: Infinity
+            },
+            listConfig: {
+                minWidth: 385,
+                cls: 'milestone-list',
+                emptyText: 'No Milestones Defined'
+            },
+            tpl: Ext.create('Ext.XTemplate',
+                '<tpl for=".">',
+                '<div class="' + Ext.baseCSSPrefix + 'boundlist-item">' +
+                '<div class="milestone-name"><b>{[values.FormattedID]}</b>:  {[values._refObjectName]}</div>',
+                '<div class="milestone-date">{[Rally.util.DateTime.formatWithDefault(values.TargetDate)]}</div>',
+                '<div class="milestone-raw-date">{[values.TargetDate]}</div>',
+                '</div>',
+                '</tpl>'
+            )
+        },
+
+        initComponent: function () {
+            this.storeConfig.sorters = [{
+                sorterFn: Rally.data.util.Sorter.getDefaultSortFn('Milestone')
+            }];
+            this.callParent(arguments);
+        },
+
+        createPicker: function() {
+            var picker = this.callParent(arguments);
+
+            picker.on({
+                show: this._addListHeaders,
+                refresh: this._addListHeaders,
+                scope: this,
+                filterSelectedNodes: false
+            });
+
+            return picker;
+        }
+    });
+})();
 Ext.define('MilestoneTrackingApp.CFDCalculator', {
     extend: 'Rally.data.lookback.calculator.TimeSeriesCalculator',
     config: {
@@ -640,8 +846,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         extend: "Ext.Container",
         requires: [ 'Rally.ui.chart.Chart' ],
         mixins: [
-        //    "MilestoneTrackingApp.IterationProgressMixin",
-          //  "MilestoneTrackingApp.IterationProgressChart"
+            "MilestoneTrackingApp.IterationProgressMixin",
+            "MilestoneTrackingApp.IterationProgressChart"
         ],
         cls: 'rally-iteration-progress-cumulative-flow-chart',
         currentScope: undefined,
@@ -652,26 +858,18 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         minimalMode: false,
         initComponent: function() {
             this.callParent(arguments);
-            console.log('initcomponent')
-            this.add({
-                xtype: 'rallychart',
+
+            var chartConfig = {
                 storeType: 'Rally.data.lookback.SnapshotStore',
                 storeConfig: this._getStoreConfig(),
                 calculatorType: 'MilestoneTrackingApp.CFDCalculator',
                 calculatorConfig: {
                     stateFieldName: 'ScheduleState',
-                    stateFieldValues: ['Defined', 'In-Progress', 'Completed', 'Accepted']
-                },
-                chartColors: [  // RGB values obtained from here: http://ux-blog.rallydev.com/?cat=23
-                    "#C0C0C0",  // $grey4
-                    "#FF8200",  // $orange
-                    "#F6A900",  // $gold
-                    "#FAD200",  // $yellow
-                    "#CADDA3",  // $lime
-                    "#1E7C00"
-                ],
-                chartConfig: this._getChartConfig()
-            });
+                    stateFieldValues: this.scheduleStates
+                }
+            };
+            chartConfig = this.minimalMode ? this._createMinimalConfig(chartConfig) : this._createChartConfig(chartConfig);
+            this.add(chartConfig);
 
         },
         _getStoreConfig: function(){
@@ -694,63 +892,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 limit: Infinity
             };
         },
-        _getChartConfig: function(){
-            console.log('height', this.height);
-
-            return {
-                chart: {
-                    zoomType: 'xy',
-                    height: this.height,
-                    width: this.width,
-                    spacingTop: 2,
-                    spacingRight: 0,
-                    spacingBottom: 8,
-                    spacingLeft: 0,
-                    alignTicks: false,
-                    animation: true,
-                    type: "area",
-                    //events: {
-                    //    click: clickChartHandler
-                    //}
-                },
-                legend: { enabled: false },
-                title: {
-                    text: ''
-                },
-                xAxis: {
-                    tickmarkPlacement: 'on',
-                    tickInterval: 20,
-                    title: {
-                        text: null
-                    }
-                },
-                yAxis: [{
-                    title: {
-                        text: null
-                    },
-                    min: 0,
-                    labels: { enabled: false }
-                }],
-                plotOptions: {
-                    series: {
-                        animation: true,
-                        marker: {
-                            enabled: false,
-                            states: {
-                                hover: {
-                                    enabled: false
-                                }
-                            }
-                        }
-                    },
-                    area: {
-                        stacking: 'normal'
-                    }
-                }
-            };
-        },
-        _createMinimalConfig: function(){
-            var config = this._createChartConfig();
+        _createMinimalConfig: function(overrides){
+            var config = this._createChartConfig(overrides);
             delete config.chartConfig.xAxis;
             delete config.chartConfig.yAxis;
 
@@ -781,9 +924,10 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         _createChartConfig: function(overrides) {
             var clickChartHandler = _.isFunction(this.clickHandler) ? this.clickHandler : Ext.emptyFn;
 
+
             return Ext.Object.merge({
                 xtype: 'rallychart',
-                updateAfterRender: Ext.bind(this._onLoad, this),
+                //updateAfterRender: Ext.bind(this._onLoad, this),
 
                 chartColors: [  // RGB values obtained from here: http://ux-blog.rallydev.com/?cat=23
                     "#C0C0C0",  // $grey4
@@ -795,6 +939,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 ],
                 chartConfig: {
                     chart: {
+
+                        //zoomType: 'xy',
                         height: this.height,
                         width: this.width,
                         spacingTop: 2,
@@ -832,22 +978,18 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     legend: {
                         enabled: true
                     },
-                    title: { text: null },
+                    title: {text: null},
                     xAxis: {
                         tickmarkPlacement: 'on',
                         tickInterval: 1
                     },
                     yAxis: [{
-                        title: { text: null },
+                        title: {text: null},
                         min: 0,
                         labels: {
-                            style: { color: "#005eb8" }
+                            style: {color: "#005eb8"}
                         }
                     }]
-                },
-                chartData: {
-                    categories: [],
-                    series: []
                 }
             }, overrides || {});
         }
@@ -1097,7 +1239,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             {xtype: 'statsbannercollapseexpand', flex: 0}
         ],
 
-        constructor: function() {
+        constructor: function(config) {
             this.callParent(arguments);
         },
 
@@ -1138,6 +1280,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             this.store.on('load', this._checkForLateStories, this);
             this.callParent(arguments);
             this._update();
+
         },
         _checkForLateStories: function(store){
             var lateStories = 0,
@@ -1148,13 +1291,10 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     children = record.get('DirectChildrenCount') || 0;
                 if (children === 0){
                     if (iteration){
-                        console.log('iteration',iteration, iteration.EndDate, targetDate);
                         if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
-                            console.log('iteration late', record.get('FormattedID'))
                             lateStories++;
                         }
                     } else {
-                        console.log('no iteration', record.get('FormattedID'))
                         lateStories++;
                     }
                 }
@@ -1188,6 +1328,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         },
 
         _setExpandedOnChildItems: function() {
+            console.log('_setExpandedOnChildItems', this.items)
             _.each(this.items.getRange(), function(item) {
                 console.log('item',item)
                 item.setExpanded(this.expanded);
@@ -1232,13 +1373,15 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             return true;
         },
 
-        _configureItems: function(items, records) {
+        _configureItems: function(items) {
+            console.log('_configureItems', this.scheduleStates)
             var defaults = {
                 flex: 1,
                 context: this.context,
                 store: this.store,
                 timeboxRecord: this.timeboxRecord,
                 timeboxEndDateField: this.timeboxEndDateField,
+                scheduleStates: this.scheduleStates,
                 listeners: {
                     ready: this._onReady,
                     scope: this
@@ -1804,10 +1947,11 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         _getRenderData: function() {
 
+
             var total = 0,
                 accepted_total = 0
                 byCount = this.byCount,
-                acceptedScheduleStates = ['Accepted'];
+                acceptedScheduleStates = this.scheduleStates.slice(this.scheduleStates.indexOf('Accepted'));
 
             Ext.Array.each(this.store.getRange(), function(r) {
                 console.log('record', r.get('FormattedID'),r.get('_type'),r.get('DirectChildrenCount'))
@@ -2599,13 +2743,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
     Ext.define('MilestoneTrackingApp.IterationProgressDialog', {
         extend: 'Rally.ui.dialog.Dialog',
         alias:'widget.statsbanneriterationprogressdialog',
-        requires: [
-            'MilestoneTrackingApp.IterationProgressDialogChartToggle',
-            //'Rally.apps.releasetracking.statsbanner.iterationprogresscharts.BurndownChart',
-            //'Rally.apps.releasetracking.statsbanner.iterationprogresscharts.CumulativeFlowChart',
-            'MilestoneTrackingApp.PieChart',
-            'Rally.ui.carousel.Carousel'
-        ],
+
         config: {
             startingIndex: 0,
             autoShow: true,
@@ -2630,92 +2768,82 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         initComponent: function(){
             var chartWidth = 704;
-            var chartHeight = 570;
+            var chartHeight = this.height * .90; 
 
             this.callParent(arguments);
-            //this.toggle = this.add({
-            //xtype: 'iterationprogressdialogcharttoggle',
-            //startingIndex: this.startingIndex,
-            //listeners: {
-            //toggle: this._toggleButtonClick,
-            //scope: this
-            //}
-            //});
-            this.carousel = this.add({
-                xtype: 'rallycarousel',
-                showDots: false,
-                enableAnimations: false,
-                carouselItems: [
-                    {
-                        xtype: 'statsbannerpiechart',
-                        width: chartWidth,
-                        height: chartHeight,
-                        context: this.context
-                    }
-                    //{
-                    //xtype: 'statsbannerburndownchart',
-                    //width: chartWidth,
-                    //height: chartHeight,
-                    //context: this.context,
-                    //store: this.store
-                    //},
-                    //{
-                    //xtype: 'statsbannercumulativeflowchart',
-                    //width: chartWidth,
-                    //height: chartHeight,
-                    //context: this.context,
-                    //store: this.store
-                    //}
-                ],
-                startingIndex: this.startingIndex,
-                listeners: {
-                    carouselmove: {
-                        fn: this._onCarouselMove,
-                        scope: this
-                    },
-                    afterlayout: {
-                        fn: this._afterLayout,
-                        single: true,
-                        scope: this
-                    }
-                }
+
+            this.chart = this.add({
+                xtype: 'statsbannercumulativeflowchart',
+                width: chartWidth,
+                height: chartHeight,
+                timeboxRecord: this.timeboxRecord,
+                scheduleStates: this.scheduleStates,
+                context: this.context
             });
+            this.title = this.chart.displayTitle;
+            //this.carousel = this.add({
+            //    xtype: 'rallycarousel',
+            //    showDots: false,
+            //    enableAnimations: false,
+            //    carouselItems: [
+            //        {
+            //            xtype: 'statsbannercumulativeflowchart',
+            //            width: chartWidth,
+            //            height: chartHeight,
+            //            timeboxRecord: this.timeboxRecord,
+            //            scheduleStates: this.scheduleStates,
+            //            context: this.context
+            //        }
+            //        //{
+            //        //xtype: 'statsbannerburndownchart',
+            //        //width: chartWidth,
+            //        //height: chartHeight,
+            //        //context: this.context,
+            //        //store: this.store
+            //        //},
+            //        //{
+            //        //xtype: 'statsbannercumulativeflowchart',
+            //        //width: chartWidth,
+            //        //height: chartHeight,
+            //        //context: this.context,
+            //        //store: this.store
+            //        //}
+            //    ],
+            //    startingIndex: this.startingIndex,
+            //    listeners: {
+            //        carouselmove: {
+            //            fn: this._onCarouselMove,
+            //            scope: this
+            //        },
+            //        afterlayout: {
+            //            fn: this._afterLayout,
+            //            single: true,
+            //            scope: this
+            //        }
+            //    }
+            //});
         },
 
-        _toggleButtonClick: function(toggleBtnContainer, buttonIndex){
-            this._setChart(buttonIndex);
-        },
+        //_toggleButtonClick: function(toggleBtnContainer, buttonIndex){
+        //    this._setChart(buttonIndex);
+        //},
 
         _afterLayout: function(){
             Ext.defer(this._setChart, 10, this, [this.startingIndex]);
         },
 
         _setChart: function(chartIndex) {
-            this.carousel.setCurrentItem(chartIndex);
+            //this.carousel.setCurrentItem(chartIndex);
             //this.toggle.setCurrentItem(chartIndex);
             // need to bypass the setTitle method as it causes a relayout of the page messing up the carousel
-            this.header.titleCmp.textEl.update(this.carousel.getCurrentItem().displayTitle);
+            this.header.titleCmp.textEl.update(this.chart.displayTitle);
         },
 
-        _onCarouselMove: function(carousel){
-            this._setChart(carousel.getCurrentItemIndex());
-        }
+        //_onCarouselMove: function(carousel){
+        //    this._setChart(carousel.getCurrentItemIndex());
+        //}
     });
 })();
-(function () {
-    var Ext = window.Ext4 || window.Ext;
-
-    Ext.define("MilestoneTrackingApp.IterationProgressChart", {
-        requires: [
-            "Rally.ui.chart.Chart"
-        ],
-
-        chartComponentConfig: {
-            xtype: "rallychart",
-            suppressClientMetrics: true /* keeps rallychart::lookback query time from displaying in client metrics */
-        }
-    });
-}());
 (function() {
     var Ext = window.Ext4 || window.Ext;
 
@@ -2727,10 +2855,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         alias:'widget.statsbannermilestoneprogress',
         requires: [
             'Rally.ui.carousel.Carousel',
-            //'Rally.apps.releasetracking.statsbanner.iterationprogresscharts.BurndownChart',
             'MilestoneTrackingApp.CumulativeFlowChart',
-            //'MilestoneTrackingApp.MinimalPieChart',
-            //'MilestoneTrackingApp.PieChart',
             'MilestoneTrackingApp.IterationProgressDialog',
             'Ext.state.Manager'
         ],
@@ -2771,83 +2896,41 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         initComponent: function(){
             this.mon(this.store, 'datachanged', this.onDataChanged, this);
             this.callParent(arguments);
-            var boundClickHandler = Ext.bind(this._onChartClick, this);
-
-            this.carouselItems = [
-                {
-                    xtype: 'statsbannercumulativeflowchart',
-                    width: 150,
-                    height: 60,
-                    minimalMode: true,
-                    timeboxRecord: this.timeboxRecord,
-                    clickHandler: boundClickHandler,
-                    context: this.context,
-                    store: this.store
-                }
-                //{
-                //xtype: 'statsbannerburndownchart',
-                //width: 150,
-                //height: 63,
-                //minimalMode: true,
-                //clickHandler: boundClickHandler,
-                //context: this.context,
-                //store: this.store
-                //},
-                //{
-                //xtype: 'statsbannercumulativeflowchart',
-                //width: 150,
-                //height: 63,
-                //minimalMode: true,
-                //clickHandler: boundClickHandler,
-                //context: this.context,
-                //store: this.store
-                //}
-            ];
-
-            _.each(this.carouselItems, function(carouselItem) {
-                carouselItem.listeners = {
-                    ready: this._onChartReady,
-                    scope: this
-                };
-            }, this);
-
-            this._pendingChartReadies = this.carouselItems.length;
+            //var boundClickHandler = Ext.bind(this._onChartClick, this);
+            //
+            //this.carouselItems = [
+            //    {
+            //        xtype: 'statsbannercumulativeflowchart',
+            //        width: 150,
+            //        height: 60,
+            //        minimalMode: true,
+            //        timeboxRecord: this.timeboxRecord,
+            //        clickHandler: boundClickHandler,
+            //        scheduleStates: this.scheduleStates,
+            //        context: this.context,
+            //        store: this.store
+            //    }
+            //];
         },
 
         expand: function() {
             this.callParent();
-            // Carousel was updated while hidden so it needs to die
-            // and we create a new one since it can't lay itself out
-            if (!this.carousel || this.carousel.getWidth() === 0) {
-                this.onDataChanged();
-            }
-        },
-
-        _onChartReady: function() {
-            this._pendingChartReadies -= 1;
-            if (this._pendingChartReadies === 0) {
-                this.fireEvent('ready', this);
-            }
+            this.onDataChanged();
         },
 
         _onChartClick: function() {
-            var currentIndex = this.carousel.getCurrentItemIndex();
-            Ext.create('Rally.apps.releasetracking.statsbanner.IterationProgressDialog', {
-                startingIndex: currentIndex,
+            //var currentIndex = this.carousel.getCurrentItemIndex();
+            Ext.create('MilestoneTrackingApp.IterationProgressDialog', {
+               // startingIndex: currentIndex,
                 store: this.store,
-                context: this.context
+                context: this.context,
+                timeboxRecord: this.timeboxRecord,
+                scheduleStates: this.scheduleStates,
+                height: 400
             });
         },
 
-        _cleanupCarousel: function () {
-            if (this.carousel) {
-                this.carousel.destroy();
-                delete this.carousel;
-            }
-        },
-
         onDestroy: function () {
-            this._cleanupCarousel();
             this.callParent(arguments);
         },
 
@@ -2860,25 +2943,9 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         _getTimebox: function(){
             return this.timeboxRecord || null;
         },
-        applyState: function (state) {
-            if (state){
-                if (state.currentChartDisplayed > this.carouselItems.length -1 || state.currentChartDisplayed < 0) {
-                    this.currentChartDisplayed = 0;
-                } else {
-                    this.currentChartDisplayed = state.currentChartDisplayed;
-                }
-            }
-        },
-
-        getState: function(){
-            return {
-                currentChartDisplayed: this.currentChartDisplayed
-            };
-        },
 
         onDataChanged: function() {
-            this._cleanupCarousel();
-            console.log('onDataChanged')
+
             if(this.rendered) {
                 if (this._getTimebox()) {
                     this.update();
@@ -2891,49 +2958,39 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         },
 
         createCarousel: function() {
-            this.carousel = Ext.create('Rally.ui.carousel.Carousel', {
-                showHeader: false,
-                showDots: true,
-                smallDots: true,
-                renderTo: this.getEl().down('.stat-carousel'),
-                height: 75,
-                layout: {
-                    type: 'vbox',
-                    align: 'center'
-                },
-                listeners: {
-                    currentitemset: this._updateTitle,
-                    carouselmove: this._updateTitle,
-                    scope: this
-                },
-                carouselItems: this.carouselItems
-            });
+            var boundClickHandler = Ext.bind(this._onChartClick, this);
 
-            if (!Ext.isIE8m){
-                // if such next line runs IE8 or < goes boom! WOW!
-                this.carousel.setCurrentItem(this.currentChartDisplayed);
+            if (this.chart){
+                this.chart.destroy();
             }
 
-            this.carousel.on('carouselmove', this._chartShownChanged, this);
+            this.chart = Ext.create('MilestoneTrackingApp.CumulativeFlowChart',{
+                width: 150,
+                height: 60,
+                minimalMode: true,
+                itemId: 'cumulative-flow-chart',
+                timeboxRecord: this.timeboxRecord,
+                clickHandler: boundClickHandler,
+                minimalMode: true,
+                scheduleStates: this.scheduleStates,
+                context: this.context,
+                renderTo: this.getEl().down('.stat-carousel'),
+                store: this.store
+            });
+            this._updateTitle('Cumulative Flow');
         },
 
-        _updateTitle: function(carousel){
+        _updateTitle: function(title){
             _.each(this.getEl().query('.stat-title'), function(el){
-                Ext.fly(el).update(carousel.getCurrentItem().displayTitle);
+                Ext.fly(el).update(title);
             }, this);
-        },
-
-        _chartShownChanged: function(){
-            var chartShown = _.findIndex(this.carouselItems, {xtype: this.carousel.getCurrentItem().xtype});
-            this.currentChartDisplayed = chartShown || 0;
-            this.saveState();
         },
 
         _addPlaceholder: function() {
             this.update();
 
             if (this.expanded) {
-                this.carousel = Ext.create('Ext.Container', {
+                this.chart = Ext.create('Ext.Container', {
                     renderTo: this.getEl().down('.stat-carousel'),
                     html: 'no iteration data'
                 });
@@ -2941,105 +2998,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         }
     });
 })();
-(function () {
-    var Ext = window.Ext4 || window.Ext;
-
-    Ext.define("MilestoneTrackingApp.IterationProgressMixin", {
-        requires: [
-            "Rally.ui.chart.Chart"
-        ],
-
-        _configureYAxis: function(ticks, axis) {
-
-            var intervalY = (this.chartComponentConfig.chartConfig.yAxis[axis].max - 0) / (ticks - 1);
-            var ticksY = [];
-            for (var i = 0; i < ticks; i++) {
-                ticksY.push(i * intervalY);
-            }
-            this.chartComponentConfig.chartConfig.yAxis[axis].tickPositions = ticksY;
-        },
-
-        _configureYAxisIntervals: function () {
-            var ticks = 5; // not much chart space, limit to 5
-            this._configureYAxis(ticks, 0);
-            if(this.chartType === "burndown") { // cumulative flow only has y axis 0
-                this._configureYAxis(ticks, 1);
-            }
-        },
-
-        _getElementValue: function (element) {
-            if (element.textContent !== undefined) {
-                return element.textContent;
-            }
-            return element.text;
-        },
-
-        _getStringValues: function (elements) {
-            var i;
-            var strings = [];
-            for (i = 0; i < elements.length; i++) {
-                strings.push(this._getElementValue(elements[i]));
-            }
-            return strings;
-        },
-
-        _getNumberValues: function (elements) {
-            var i;
-            var numbers = [];
-            for (i = 0; i < elements.length; i++) {
-                if(this._getElementValue(elements[i])) {
-                    numbers.push(this._getElementValue(elements[i]).split(' ')[0] * 1);
-                } else {
-                    numbers.push(0);
-                }
-
-            }
-            return numbers;
-        },
-
-        _computeMaxYAxisValue: function(series) {
-            var i, j, max = 0.0;
-            // sum each day's values and find the largest sum
-            for(i=0; i < series[0].data.length; i++) {
-                var val = 0.0;
-                for(j=0; j < series.length; j++) {
-                    // if is for insurance, _should_ always be true
-                    if(series[j].data.length === series[0].data.length) {
-                        val += series[j].data[i];
-                    }
-                }
-                if(val > max) {
-                    max = val;
-                }
-            }
-            max = Math.ceil(max / 4) * 4;  // round up to multiple of 4 so we will create 5 integral tick marks
-
-            return (max === 0) ? 4 : max;
-        },
-
-        _createChartDatafromXML: function (xml) {
-            var parseXml;
-
-            if (typeof window.DOMParser !== "undefined") {
-                parseXml = function (xmlStr) {
-                    return ( new window.DOMParser() ).parseFromString(xmlStr, "text/xml");
-                };
-            } else if (typeof window.ActiveXObject !== "undefined" &&
-                new window.ActiveXObject("Microsoft.XMLDOM")) {
-                parseXml = function (xmlStr) {
-                    var xmlDoc = new window.ActiveXObject("Microsoft.XMLDOM");
-                    xmlDoc.async = "false";
-                    xmlDoc.loadXML(xmlStr);
-                    return xmlDoc;
-                };
-            } else {
-                throw new Error("No XML parser found");
-            }
-
-            return parseXml(xml);
-        }
-    });
-}());
 (function(){
     var Ext = window.Ext4 || window.Ext;
 
@@ -3278,8 +3236,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         extend: "Ext.Container",
         requires: [ 'Rally.ui.chart.Chart' ],
         mixins: [
-        //    "MilestoneTrackingApp.IterationProgressMixin",
-          //  "MilestoneTrackingApp.IterationProgressChart"
+            "MilestoneTrackingApp.IterationProgressMixin",
+            "MilestoneTrackingApp.IterationProgressChart"
         ],
         cls: 'rally-iteration-progress-cumulative-flow-chart',
         currentScope: undefined,
@@ -3290,26 +3248,18 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         minimalMode: false,
         initComponent: function() {
             this.callParent(arguments);
-            console.log('initcomponent')
-            this.add({
-                xtype: 'rallychart',
+
+            var chartConfig = {
                 storeType: 'Rally.data.lookback.SnapshotStore',
                 storeConfig: this._getStoreConfig(),
                 calculatorType: 'MilestoneTrackingApp.CFDCalculator',
                 calculatorConfig: {
                     stateFieldName: 'ScheduleState',
-                    stateFieldValues: ['Defined', 'In-Progress', 'Completed', 'Accepted']
-                },
-                chartColors: [  // RGB values obtained from here: http://ux-blog.rallydev.com/?cat=23
-                    "#C0C0C0",  // $grey4
-                    "#FF8200",  // $orange
-                    "#F6A900",  // $gold
-                    "#FAD200",  // $yellow
-                    "#CADDA3",  // $lime
-                    "#1E7C00"
-                ],
-                chartConfig: this._getChartConfig()
-            });
+                    stateFieldValues: this.scheduleStates
+                }
+            };
+            chartConfig = this.minimalMode ? this._createMinimalConfig(chartConfig) : this._createChartConfig(chartConfig);
+            this.add(chartConfig);
 
         },
         _getStoreConfig: function(){
@@ -3332,63 +3282,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 limit: Infinity
             };
         },
-        _getChartConfig: function(){
-            console.log('height', this.height);
-
-            return {
-                chart: {
-                    zoomType: 'xy',
-                    height: this.height,
-                    width: this.width,
-                    spacingTop: 2,
-                    spacingRight: 0,
-                    spacingBottom: 8,
-                    spacingLeft: 0,
-                    alignTicks: false,
-                    animation: true,
-                    type: "area",
-                    //events: {
-                    //    click: clickChartHandler
-                    //}
-                },
-                legend: { enabled: false },
-                title: {
-                    text: ''
-                },
-                xAxis: {
-                    tickmarkPlacement: 'on',
-                    tickInterval: 20,
-                    title: {
-                        text: null
-                    }
-                },
-                yAxis: [{
-                    title: {
-                        text: null
-                    },
-                    min: 0,
-                    labels: { enabled: false }
-                }],
-                plotOptions: {
-                    series: {
-                        animation: true,
-                        marker: {
-                            enabled: false,
-                            states: {
-                                hover: {
-                                    enabled: false
-                                }
-                            }
-                        }
-                    },
-                    area: {
-                        stacking: 'normal'
-                    }
-                }
-            };
-        },
-        _createMinimalConfig: function(){
-            var config = this._createChartConfig();
+        _createMinimalConfig: function(overrides){
+            var config = this._createChartConfig(overrides);
             delete config.chartConfig.xAxis;
             delete config.chartConfig.yAxis;
 
@@ -3419,9 +3314,10 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         _createChartConfig: function(overrides) {
             var clickChartHandler = _.isFunction(this.clickHandler) ? this.clickHandler : Ext.emptyFn;
 
+
             return Ext.Object.merge({
                 xtype: 'rallychart',
-                updateAfterRender: Ext.bind(this._onLoad, this),
+                //updateAfterRender: Ext.bind(this._onLoad, this),
 
                 chartColors: [  // RGB values obtained from here: http://ux-blog.rallydev.com/?cat=23
                     "#C0C0C0",  // $grey4
@@ -3433,6 +3329,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 ],
                 chartConfig: {
                     chart: {
+
+                        //zoomType: 'xy',
                         height: this.height,
                         width: this.width,
                         spacingTop: 2,
@@ -3470,22 +3368,18 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     legend: {
                         enabled: true
                     },
-                    title: { text: null },
+                    title: {text: null},
                     xAxis: {
                         tickmarkPlacement: 'on',
                         tickInterval: 1
                     },
                     yAxis: [{
-                        title: { text: null },
+                        title: {text: null},
                         min: 0,
                         labels: {
-                            style: { color: "#005eb8" }
+                            style: {color: "#005eb8"}
                         }
                     }]
-                },
-                chartData: {
-                    categories: [],
-                    series: []
                 }
             }, overrides || {});
         }
@@ -3530,11 +3424,17 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 return;
             }
 
-            Rally.technicalservices.Utilities.fetchPortfolioTypes().then({
+            var promises = [
+                Rally.technicalservices.Utilities.fetchScheduleStates(),
+                Rally.technicalservices.Utilities.fetchPortfolioTypes()
+            ];
+
+            Deft.Promise.all(promises).then({
                 scope: this,
-                success: function(records){
-                    this.sModelNames = Ext.Array.from(_.first(records).get('TypePath'));
-                    //this.firstPortfolioItemName = _.first(records).get('Name');
+                success: function(results){
+                    this.logger.log('results',results);
+                    this.sModelNames = Ext.Array.from(_.first(results[1]).get('TypePath'));
+                    this.scheduleStates = results[0];
                     this._addComponents();
                 },
                 failure: function(msg){
@@ -3595,6 +3495,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         },
         _getModelNames: function () {
+            this.logger.log('_getModelNames',this.sModelNames);
             return this.sModelNames.concat(['HierarchicalRequirement','Defect']);
         },
 
@@ -3651,11 +3552,10 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     remoteSort: true,
                     root: {expanded: true},
                     enableHierarchy: true,
-                    expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
+                    //expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
                 };
 
             config.filters = this._getFilters();
-            console.log('config',config);
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(config).then({
                 success: function (store) {
                     return store;
@@ -3673,6 +3573,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 xtype: 'statsbanner',
                 itemId: 'statsBanner',
                 //storeConfig: this._getStoreConfigs(),
+                scheduleStates: this.scheduleStates,
                 context: this.getContext(),
                 timeboxRecord: this._getTimeBoxRecord(),
                 timeboxEndDateField: 'TargetDate',
@@ -3688,11 +3589,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         _addGridBoard: function (gridStore) {
             var context = this.getContext();
-
-            // gridStore.setParentTypes(this.sModelNames);
-           // gridStore.load();
-
-            //this.remove('gridBoard');
 
             this.gridboard = this.down('#grid_box').add({
                 itemId: 'gridBoard',
@@ -3714,10 +3610,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 listeners: {
                     load: this._onLoad,
                     afterrender : function() {
-                        console.log("afterrender",this);
                         this.setWidth(this.getWidth()+1);
-                        console.log("afterrender",this.getWidth());
-                        // console.log(this.getGridOrBoard()); //.getView().refresh(true);
                     },
                     scope: this
                 },
@@ -3960,22 +3853,13 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 stateId = context.getScopedStateId(stateString);
 
             var gridConfig = {
-                xtype: 'rallytreegrid',
                 store: gridStore,
-                //enableRanking: this.getContext().getWorkspace().WorkspaceConfiguration.DragDropRankingEnabled,
-                //enableRanking: false,
-                //enableBulkEdit: false,
-                //enableEditing: false,
                 columnCfgs: ['Name'], //must set this to null to offset default behaviors in the gridboard
                 defaultColumnCfgs: this._getGridColumns(),
-                model: 'UserStory',
-                showSummary: true,
-                summaryColumns: this._getSummaryColumnConfig(),
                 plugins: [],
                 stateId: stateId,
                 stateful: true
             };
-
             return gridConfig;
         },
 

@@ -36,11 +36,17 @@
                 return;
             }
 
-            Rally.technicalservices.Utilities.fetchPortfolioTypes().then({
+            var promises = [
+                Rally.technicalservices.Utilities.fetchScheduleStates(),
+                Rally.technicalservices.Utilities.fetchPortfolioTypes()
+            ];
+
+            Deft.Promise.all(promises).then({
                 scope: this,
-                success: function(records){
-                    this.sModelNames = Ext.Array.from(_.first(records).get('TypePath'));
-                    //this.firstPortfolioItemName = _.first(records).get('Name');
+                success: function(results){
+                    this.logger.log('results',results);
+                    this.sModelNames = Ext.Array.from(_.first(results[1]).get('TypePath'));
+                    this.scheduleStates = results[0];
                     this._addComponents();
                 },
                 failure: function(msg){
@@ -101,6 +107,7 @@
 
         },
         _getModelNames: function () {
+            this.logger.log('_getModelNames',this.sModelNames);
             return this.sModelNames.concat(['HierarchicalRequirement','Defect']);
         },
 
@@ -157,11 +164,10 @@
                     remoteSort: true,
                     root: {expanded: true},
                     enableHierarchy: true,
-                    expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
+                    //expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
                 };
 
             config.filters = this._getFilters();
-            console.log('config',config);
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(config).then({
                 success: function (store) {
                     return store;
@@ -179,6 +185,7 @@
                 xtype: 'statsbanner',
                 itemId: 'statsBanner',
                 //storeConfig: this._getStoreConfigs(),
+                scheduleStates: this.scheduleStates,
                 context: this.getContext(),
                 timeboxRecord: this._getTimeBoxRecord(),
                 timeboxEndDateField: 'TargetDate',
@@ -194,11 +201,6 @@
 
         _addGridBoard: function (gridStore) {
             var context = this.getContext();
-
-            // gridStore.setParentTypes(this.sModelNames);
-           // gridStore.load();
-
-            //this.remove('gridBoard');
 
             this.gridboard = this.down('#grid_box').add({
                 itemId: 'gridBoard',
@@ -220,10 +222,7 @@
                 listeners: {
                     load: this._onLoad,
                     afterrender : function() {
-                        console.log("afterrender",this);
                         this.setWidth(this.getWidth()+1);
-                        console.log("afterrender",this.getWidth());
-                        // console.log(this.getGridOrBoard()); //.getView().refresh(true);
                     },
                     scope: this
                 },
@@ -466,22 +465,13 @@
                 stateId = context.getScopedStateId(stateString);
 
             var gridConfig = {
-                xtype: 'rallytreegrid',
                 store: gridStore,
-                //enableRanking: this.getContext().getWorkspace().WorkspaceConfiguration.DragDropRankingEnabled,
-                //enableRanking: false,
-                //enableBulkEdit: false,
-                //enableEditing: false,
                 columnCfgs: ['Name'], //must set this to null to offset default behaviors in the gridboard
                 defaultColumnCfgs: this._getGridColumns(),
-                model: 'UserStory',
-                showSummary: true,
-                summaryColumns: this._getSummaryColumnConfig(),
                 plugins: [],
                 stateId: stateId,
                 stateful: true
             };
-
             return gridConfig;
         },
 

@@ -36,7 +36,7 @@
             {xtype: 'statsbannercollapseexpand', flex: 0}
         ],
 
-        constructor: function() {
+        constructor: function(config) {
             this.callParent(arguments);
         },
 
@@ -77,6 +77,7 @@
             this.store.on('load', this._checkForLateStories, this);
             this.callParent(arguments);
             this._update();
+
         },
         _checkForLateStories: function(store){
             var lateStories = 0,
@@ -87,13 +88,10 @@
                     children = record.get('DirectChildrenCount') || 0;
                 if (children === 0){
                     if (iteration){
-                        console.log('iteration',iteration, iteration.EndDate, targetDate);
                         if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
-                            console.log('iteration late', record.get('FormattedID'))
                             lateStories++;
                         }
                     } else {
-                        console.log('no iteration', record.get('FormattedID'))
                         lateStories++;
                     }
                 }
@@ -127,6 +125,7 @@
         },
 
         _setExpandedOnChildItems: function() {
+            console.log('_setExpandedOnChildItems', this.items)
             _.each(this.items.getRange(), function(item) {
                 console.log('item',item)
                 item.setExpanded(this.expanded);
@@ -171,13 +170,15 @@
             return true;
         },
 
-        _configureItems: function(items, records) {
+        _configureItems: function(items) {
+            console.log('_configureItems', this.scheduleStates)
             var defaults = {
                 flex: 1,
                 context: this.context,
                 store: this.store,
                 timeboxRecord: this.timeboxRecord,
                 timeboxEndDateField: this.timeboxEndDateField,
+                scheduleStates: this.scheduleStates,
                 listeners: {
                     ready: this._onReady,
                     scope: this
