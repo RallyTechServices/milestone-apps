@@ -28,7 +28,7 @@
                     stateFieldValues: this.scheduleStates
                 }
             };
-            chartConfig = this._createMinimalConfig(chartConfig);
+            chartConfig = this.minimalMode ? this._createMinimalConfig(chartConfig) : this._createChartConfig(chartConfig);
             this.add(chartConfig);
 
         },
@@ -87,7 +87,7 @@
 
             return Ext.Object.merge({
                 xtype: 'rallychart',
-                updateAfterRender: Ext.bind(this._onLoad, this),
+                //updateAfterRender: Ext.bind(this._onLoad, this),
 
                 chartColors: [  // RGB values obtained from here: http://ux-blog.rallydev.com/?cat=23
                     "#C0C0C0",  // $grey4
