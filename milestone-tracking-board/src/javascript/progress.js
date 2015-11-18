@@ -7,12 +7,6 @@
     Ext.define('MilestoneTrackingApp.MilestoneProgress', {
         extend: 'MilestoneTrackingApp.BannerWidget',
         alias:'widget.statsbannermilestoneprogress',
-        requires: [
-            'Rally.ui.carousel.Carousel',
-            'MilestoneTrackingApp.CumulativeFlowChart',
-            'MilestoneTrackingApp.IterationProgressDialog',
-            'Ext.state.Manager'
-        ],
 
         config: {
             context: null,
@@ -50,21 +44,7 @@
         initComponent: function(){
             this.mon(this.store, 'datachanged', this.onDataChanged, this);
             this.callParent(arguments);
-            //var boundClickHandler = Ext.bind(this._onChartClick, this);
-            //
-            //this.carouselItems = [
-            //    {
-            //        xtype: 'statsbannercumulativeflowchart',
-            //        width: 150,
-            //        height: 60,
-            //        minimalMode: true,
-            //        timeboxRecord: this.timeboxRecord,
-            //        clickHandler: boundClickHandler,
-            //        scheduleStates: this.scheduleStates,
-            //        context: this.context,
-            //        store: this.store
-            //    }
-            //];
+
         },
 
         expand: function() {
@@ -79,7 +59,8 @@
                 store: this.store,
                 context: this.context,
                 timeboxRecord: this.timeboxRecord,
-                scheduleStates: this.scheduleStates
+                scheduleStates: this.scheduleStates,
+                height: 400
             });
         },
 

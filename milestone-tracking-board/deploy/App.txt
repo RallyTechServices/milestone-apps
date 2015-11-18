@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Nov 18 2015 12:06:47 GMT-0700 (MST) -->
+    <!--  Build Date: Wed Nov 18 2015 12:12:20 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Nov 18 2015 12:06:47 GMT-0700 (MST)";
-        var CHECKSUM = 316498453638;
+        var APP_BUILD_DATE = "Wed Nov 18 2015 12:12:20 GMT-0700 (MST)";
+        var CHECKSUM = 316668866838;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -2768,7 +2768,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         initComponent: function(){
             var chartWidth = 704;
-            var chartHeight = 570;
+            var chartHeight = this.height * .90; 
 
             this.callParent(arguments);
 
@@ -2925,7 +2925,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 store: this.store,
                 context: this.context,
                 timeboxRecord: this.timeboxRecord,
-                scheduleStates: this.scheduleStates
+                scheduleStates: this.scheduleStates,
+                height: 400
             });
         },
 

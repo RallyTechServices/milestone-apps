@@ -1,5 +1,5 @@
 #Milestone Tracking Board
-
+![ScreenShot](/images/milestone-tracking-board.png)
 
 ###Banner
 What should the scope of the banner be?  

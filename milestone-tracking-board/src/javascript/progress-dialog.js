@@ -33,7 +33,7 @@
 
         initComponent: function(){
             var chartWidth = 704;
-            var chartHeight = 570;
+            var chartHeight = this.height * .90;
 
             this.callParent(arguments);
 
