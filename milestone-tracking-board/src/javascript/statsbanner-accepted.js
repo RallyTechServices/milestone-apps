@@ -20,10 +20,11 @@
 
         _getRenderData: function() {
 
+
             var total = 0,
                 accepted_total = 0
                 byCount = this.byCount,
-                acceptedScheduleStates = ['Accepted'];
+                acceptedScheduleStates = this.scheduleStates.slice(this.scheduleStates.indexOf('Accepted'));
 
             Ext.Array.each(this.store.getRange(), function(r) {
                 console.log('record', r.get('FormattedID'),r.get('_type'),r.get('DirectChildrenCount'))

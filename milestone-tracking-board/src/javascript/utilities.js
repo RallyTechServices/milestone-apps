@@ -1,6 +1,7 @@
 Ext.define('Rally.technicalservices.Utilities',{
     singleton: true,
     fetchPortfolioTypes: function(){
+        console.log('fetchPortfolioItemTypes')
         var deferred = Ext.create('Deft.Deferred');
 
         var typeStore = Ext.create('Rally.data.wsapi.Store', {
@@ -24,8 +25,10 @@ Ext.define('Rally.technicalservices.Utilities',{
         typeStore.load({
             scope: this,
             callback: function (records, operation, success) {
+                console.log('callback', operation, success);
                 if (success){
                     deferred.resolve(records);
+
                 } else {
                     deferred.reject("Error loading Portfolio Item Types:  " + operation.error.errors.join(','));
                 }
@@ -74,16 +77,32 @@ Ext.define('Rally.technicalservices.Utilities',{
         });
         return deferred;
     },
-    fetchScheduleStates: function () {
-        return this.store.model.getField('ScheduleState').getAllowedValueStore().load().then({
-            success: function (records) {
-                this._scheduleStates = _.map(records, function (record) {
-                    return record.get('StringValue');
+    fetchScheduleStates: function(){
+        var deferred = Ext.create('Deft.Deferred');
+        Rally.data.ModelFactory.getModel({
+            type: 'HierarchicalRequirement',
+            success: function(model) {
+                var field = model.getField('ScheduleState');
+                field.getAllowedValueStore().load({
+                    callback: function(records, operation, success) {
+                        if (success){
+                            var values = [];
+                            for (var i=0; i < records.length ; i++){
+                                values.push(records[i].get('StringValue'));
+                            }
+                            deferred.resolve(values);
+                        } else {
+                            deferred.reject('Error loading ScheduleState values for User Story:  ' + operation.error.errors.join(','));
+                        }
+                    },
+                    scope: this
                 });
-                return this._scheduleStates;
             },
-            scope: this,
-            requester: this
+            failure: function() {
+                var error = "Could not load schedule states";
+                deferred.reject(error);
+            }
         });
+        return deferred.promise;
     }
 });

@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Nov 12 2015 18:09:45 GMT-0700 (MST) -->
+    <!--  Build Date: Wed Nov 18 2015 11:38:24 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Nov 12 2015 18:09:45 GMT-0700 (MST)";
-        var CHECKSUM = 328834457003;
+        var APP_BUILD_DATE = "Wed Nov 18 2015 11:38:24 GMT-0700 (MST)";
+        var CHECKSUM = 730921732528;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -179,6 +179,7 @@ Ext.define('Rally.technicalservices.Logger',{
 Ext.define('Rally.technicalservices.Utilities',{
     singleton: true,
     fetchPortfolioTypes: function(){
+        console.log('fetchPortfolioItemTypes')
         var deferred = Ext.create('Deft.Deferred');
 
         var typeStore = Ext.create('Rally.data.wsapi.Store', {
@@ -202,8 +203,10 @@ Ext.define('Rally.technicalservices.Utilities',{
         typeStore.load({
             scope: this,
             callback: function (records, operation, success) {
+                console.log('callback', operation, success);
                 if (success){
                     deferred.resolve(records);
+
                 } else {
                     deferred.reject("Error loading Portfolio Item Types:  " + operation.error.errors.join(','));
                 }
@@ -252,19 +255,148 @@ Ext.define('Rally.technicalservices.Utilities',{
         });
         return deferred;
     },
-    fetchScheduleStates: function () {
-        return this.store.model.getField('ScheduleState').getAllowedValueStore().load().then({
-            success: function (records) {
-                this._scheduleStates = _.map(records, function (record) {
-                    return record.get('StringValue');
+    fetchScheduleStates: function(){
+        var deferred = Ext.create('Deft.Deferred');
+        Rally.data.ModelFactory.getModel({
+            type: 'HierarchicalRequirement',
+            success: function(model) {
+                var field = model.getField('ScheduleState');
+                field.getAllowedValueStore().load({
+                    callback: function(records, operation, success) {
+                        if (success){
+                            var values = [];
+                            for (var i=0; i < records.length ; i++){
+                                values.push(records[i].get('StringValue'));
+                            }
+                            deferred.resolve(values);
+                        } else {
+                            deferred.reject('Error loading ScheduleState values for User Story:  ' + operation.error.errors.join(','));
+                        }
+                    },
+                    scope: this
                 });
-                return this._scheduleStates;
             },
-            scope: this,
-            requester: this
+            failure: function() {
+                var error = "Could not load schedule states";
+                deferred.reject(error);
+            }
         });
+        return deferred.promise;
     }
 });
+(function () {
+    var Ext = window.Ext4 || window.Ext;
+
+    Ext.define("MilestoneTrackingApp.IterationProgressChart", {
+        requires: [
+            "Rally.ui.chart.Chart"
+        ],
+
+        chartComponentConfig: {
+            xtype: "rallychart",
+            suppressClientMetrics: true /* keeps rallychart::lookback query time from displaying in client metrics */
+        }
+    });
+}());
+(function () {
+    var Ext = window.Ext4 || window.Ext;
+
+    Ext.define("MilestoneTrackingApp.IterationProgressMixin", {
+        requires: [
+            "Rally.ui.chart.Chart"
+        ],
+
+        _configureYAxis: function(ticks, axis) {
+
+            var intervalY = (this.chartComponentConfig.chartConfig.yAxis[axis].max - 0) / (ticks - 1);
+            var ticksY = [];
+            for (var i = 0; i < ticks; i++) {
+                ticksY.push(i * intervalY);
+            }
+            this.chartComponentConfig.chartConfig.yAxis[axis].tickPositions = ticksY;
+        },
+
+        _configureYAxisIntervals: function () {
+            var ticks = 5; // not much chart space, limit to 5
+            this._configureYAxis(ticks, 0);
+            if(this.chartType === "burndown") { // cumulative flow only has y axis 0
+                this._configureYAxis(ticks, 1);
+            }
+        },
+
+        _getElementValue: function (element) {
+            if (element.textContent !== undefined) {
+                return element.textContent;
+            }
+            return element.text;
+        },
+
+        _getStringValues: function (elements) {
+            var i;
+            var strings = [];
+            for (i = 0; i < elements.length; i++) {
+                strings.push(this._getElementValue(elements[i]));
+            }
+            return strings;
+        },
+
+        _getNumberValues: function (elements) {
+            var i;
+            var numbers = [];
+            for (i = 0; i < elements.length; i++) {
+                if(this._getElementValue(elements[i])) {
+                    numbers.push(this._getElementValue(elements[i]).split(' ')[0] * 1);
+                } else {
+                    numbers.push(0);
+                }
+
+            }
+            return numbers;
+        },
+
+        _computeMaxYAxisValue: function(series) {
+            var i, j, max = 0.0;
+            // sum each day's values and find the largest sum
+            for(i=0; i < series[0].data.length; i++) {
+                var val = 0.0;
+                for(j=0; j < series.length; j++) {
+                    // if is for insurance, _should_ always be true
+                    if(series[j].data.length === series[0].data.length) {
+                        val += series[j].data[i];
+                    }
+                }
+                if(val > max) {
+                    max = val;
+                }
+            }
+            max = Math.ceil(max / 4) * 4;  // round up to multiple of 4 so we will create 5 integral tick marks
+
+            return (max === 0) ? 4 : max;
+        },
+
+        _createChartDatafromXML: function (xml) {
+            var parseXml;
+
+            if (typeof window.DOMParser !== "undefined") {
+                parseXml = function (xmlStr) {
+                    return ( new window.DOMParser() ).parseFromString(xmlStr, "text/xml");
+                };
+            } else if (typeof window.ActiveXObject !== "undefined" &&
+                new window.ActiveXObject("Microsoft.XMLDOM")) {
+                parseXml = function (xmlStr) {
+                    var xmlDoc = new window.ActiveXObject("Microsoft.XMLDOM");
+                    xmlDoc.async = "false";
+                    xmlDoc.loadXML(xmlStr);
+                    return xmlDoc;
+                };
+            } else {
+                throw new Error("No XML parser found");
+            }
+
+            return parseXml(xml);
+        }
+    });
+}());
 (function(){
     var Ext = window.Ext4 || window.Ext;
 
@@ -599,6 +731,1942 @@ Ext.define('Rally.technicalservices.Utilities',{
         }
     });
 })();
+(function() {
+    var Ext = window.Ext4 || window.Ext;
+
+    var wsapiMaxPageSize = 200;
+
+    /**
+     * A data store which can retrieve hierarchical artifact data.  In general this class will not be
+     * instantiated directly but will instead be created by Rally.data.wsapi.TreeStoreBuilder to be used
+     * in conjunction with a Rally.ui.grid.TreeGrid.
+     *
+     *      Ext.create('Rally.data.wsapi.TreeStoreBuilder').build({
+     *          models: ['userstory'],
+     *          autoLoad: true,
+     *          enableHierarchy: true
+     *      }).then({
+     *          success: function(store) {
+     *              //use the store
+     *          }
+     *      });
+     *
+     */
+    Ext.define('Rally.data.wsapi.TreeStore', {
+
+        // Client Metrics Note: WsapiTreeStore is too low level to record its load begins/ends. The problem is
+        // client metrics can only reliably keep track of one load per component at a time. WsapiTreeStore makes
+        // no guarantee that only one load will happen at a time. It's better to measure the component that is using
+        // the store. All is not lost, the actual data requests that WsapiTreeStore makes *are* measured by client metrics.
+
+        requires: [
+            'Deft.promise.Deferred',
+            'Rally.data.ModelFactory',
+            'Rally.ui.grid.data.NodeInterface',
+            'Rally.data.ModelTypes',
+            'Rally.data.wsapi.ParentChildMapper'
+        ],
+        extend: 'Ext.data.TreeStore',
+        alias: 'store.rallywsapitreestore',
+        mixins: {
+            messageable: 'Rally.Messageable',
+            findRecords: 'Rally.data.WsapiFindRecords',
+            clientMetrics: 'Rally.clientmetrics.ClientMetricsRecordable'
+        },
+
+        statics: {
+            wsapiMaxPageSize: wsapiMaxPageSize
+        },
+
+        /**
+         * @cfg {Number}
+         * The starting page to be retrieved
+         */
+        currentPage: 1,
+
+        /**
+         * @cfg {Number}
+         * The number of records to retrieve per page.
+         */
+        pageSize: 25,
+
+        /**
+         * @cfg {Boolean}
+         * True to use child page size
+         */
+        childPageSizeEnabled: false,
+
+        /**
+         * @cfg {Number}
+         * The number of child items to retrieve when a node is expanded.
+         */
+        childPageSize: 20,
+
+
+        /**
+         * @cfg {Number}
+         * The number of additional children to retrieve when clicking the show more link
+         */
+        childPageSizeAdditional: 200,
+
+        /**
+         * The data scoping to be applied.
+         * @cfg {Object} context
+         * @cfg {String} context.workspace The ref of the workspace to scope to
+         * @cfg {String} context.project The ref of the project to scope to.  Specify null to query the entire specified workspace.
+         * @cfg {Boolean} context.projectScopeUp Whether to scope up the project hierarchy
+         * @cfg {Boolean} context.projectScopeDown Whether to scope down the project hierarchy
+         */
+        context: undefined,
+
+        /**
+         * The wsapi version to use when automatically retrieving a model before loading.
+         * By default the wsapi version of the specified model is used.
+         * @cfg {String/Number} wsapiVersion
+         */
+        wsapiVersion: undefined,
+
+        nodeParam: undefined,
+
+        /**
+         * The model for handling root level and child level items (required)
+         * @cfg Rally.data.wsapi.Model model
+         */
+        model: undefined,
+
+        /**
+         * The type definition typePaths to render as root items (required)
+         * @cfg {String[]} parentTypes
+         */
+        parentTypes: [],
+
+        /**
+         * @cfg {String[]} fetch
+         * The fields to be retrieved
+         */
+        fetch: undefined,
+
+        /**
+         * @cfg {Boolean}
+         *
+         * True to set record's 'leaf' property to true when children are present.
+         */
+        enableHierarchy: false,
+
+        /**
+         * @property
+         * @private
+         */
+        childLevelSorters: [],
+
+        /**
+         * ParentChildMapper reference
+         */
+        mapper: null,
+
+        // Ext property used to indicate that childNodes are loaded on demand when expanded
+        lazyFill: true,
+
+        sums: {},
+
+        constructor: function(config) {
+            this.callParent(arguments);
+            if (this.parentTypes.length === 0 || !this.model) {
+                Ext.Error.raise('You must configure the tree store with parentTypes and a model');
+            }
+
+            if (_.isEmpty(this.mapper)) {
+                this.mapper = Ext.create('Rally.data.wsapi.ParentChildMapper');
+            }
+
+            if (_.isEmpty(this.childLevelSorters)) {
+                this.childLevelSorters = this._getDefaultChildSorters();
+            }
+
+            this.addEvents(
+                /**
+                 * @event error
+                 * Fires when a store load comes back with errors
+                 * @param {String[]} errors
+                 */
+                'error',
+
+                /**
+                 * @event currentpagereset
+                 * Fires when the store determines that the current page needs to be reset to the first page of results
+                 */
+                'currentpagereset'
+            );
+
+            this._decorateModels();
+        },
+
+        getSums: function() {
+            return this.sums;
+        },
+
+        setSums: function(sums) {
+            this.sums = sums;
+        },
+
+        isHierarchyEnabled: function() {
+            return this.enableHierarchy === true;
+        },
+
+        setRootNode: function(root, preventLoad) {
+            this.tree.on('rootchange', this._decorateModels, this, {single: true});
+            this.callParent([root, preventLoad || !this.autoLoad]);
+        },
+
+        remove: function(records) {
+            records = Ext.Array.from(records);
+
+            this.totalCount -= records.length;
+
+            _.invoke(records, 'remove');
+        },
+
+        indexOf: function(record) {
+            return this.getRootNode().indexOf(record);
+        },
+
+        insert: function(index, records) {
+            records = Ext.Array.from(records);
+
+            this.totalCount += records.length;
+
+            var rootNode = this.getRootNode();
+            _.each(records, function(record) {
+                rootNode.insertChild(index, record);
+                rootNode.incrementLeafCount();
+            }, this);
+        },
+
+        getTopLevelNodes: function() {
+            var topLevelNodes = [];
+
+            this.each(function(node) {
+                if (node.getDepth() === 1) {
+                    topLevelNodes.push(node);
+                }
+            }, this);
+
+            return topLevelNodes;
+        },
+
+        getParentFieldNamesByChildType: function(childType, parentType) {
+            var model = this.model.getArtifactComponentModel(childType);
+
+            return _.transform(this.mapper.getParentFields(childType, parentType), function(acc, field) {
+                var typePath = field.typePath,
+                    fieldName = field.fieldName,
+                    hasFieldModel = this.model.getArtifactComponentModel(typePath) || model.hasField(fieldName);
+
+                if (hasFieldModel) {
+                    acc.push(fieldName.replace(/\s+/g, ''));
+                }
+            }, [], this);
+        },
+
+        _getParentFieldNames: function(childTypePaths, parentTypePath) {
+            var parentFieldNames = [];
+            if (this.enableHierarchy) {
+                _.each(childTypePaths, function (typePath) {
+                    parentFieldNames = _.union(parentFieldNames, this.getParentFieldNamesByChildType(typePath.toLowerCase(), parentTypePath));
+                }, this);
+            }
+            return parentFieldNames;
+        },
+
+        _getChildTypePaths: function(parentTypes) {
+            if (this.enableHierarchy) {
+                return _.intersection(this._getStoreTypePaths(), this.mapper.getChildModelTypePaths(parentTypes));
+            }
+            return [];
+        },
+
+        _getStoreTypePaths: function() {
+            if(_.isFunction(this.model.getArtifactComponentModels)) {
+                return _.pluck(this.model.getArtifactComponentModels(),'typePath');
+            }
+            return [this.model.typePath];
+        },
+
+        isRootNode: function(node) {
+            return _.isEmpty(node) || isNaN(node.get('ObjectID'));
+        },
+
+        _getDefaultChildSorters: function() {
+            return [
+                {
+                    property: 'TaskIndex',
+                    direction: 'ASC'
+                },
+                {
+                    property: Rally.data.Ranker.getRankField(this.model),
+                    direction: 'ASC'
+                }];
+        },
+
+        _getCollectionFetchNames: function(typePaths) {
+
+            var collectionFetchNames = _.reduce(typePaths, function(acc, typePath) {
+                return _.union(acc, _.pluck(this.mapper.getChildCollections(typePath), "collectionName"));
+            }, [], this);
+
+            if (_.contains(collectionFetchNames, 'Tasks')) {
+                // TaskIndex is required for client-side task sorting
+                collectionFetchNames.push('TaskIndex');
+            }
+
+            return collectionFetchNames;
+        },
+
+        _decorateModels: function() {
+            var models = this.model;
+
+            if (_.isFunction(models.getArtifactComponentModels)) {
+                models = models.getArtifactComponentModels();
+            }
+
+            _.each(Ext.Array.from(models), Rally.ui.grid.data.NodeInterface.decorate, Rally.ui.grid.data.NodeInterface);
+        },
+
+        _errors: [],
+
+        /**
+         * @inheritdoc
+         */
+        load: function(options) {
+            this.recordLoadBegin({description: 'tree store load', component: this.requester});
+
+            this._hasErrors = false;
+
+            this.on('beforeload', function(store, operation) {
+                delete operation.id;
+            }, this, { single: true });
+
+            options = this._configureLoad(options);
+            options.originalCallback = options.callback;
+
+            var deferred = Ext.create('Deft.Deferred'),
+                me = this;
+
+            options.callback = function (records, operation, success) {
+                me.dataLoaded = true;
+
+                if(me.isRootNode(options.node) && operation.resultSet && operation.resultSet.sums) {
+                    me.setSums(operation.resultSet.sums);
+                }
+
+                if (me._pageIsEmpty(operation)) {
+                    me._reloadEmptyPage(options).then({
+                        success: function (records) {
+                            me._resolveLoadingRecords(deferred, records, options, operation, success);
+                        },
+                        failure: function() {
+                            me._rejectLoadingRecord(deferred, options, operation);
+                        }
+                    });
+                } else {
+                    me._resolveLoadingRecords(deferred, records, options, operation, success);
+                }
+            };
+
+            if (this._isViewReady()) {
+                this._beforeInitialLoad(options);
+            }
+
+            this.callParent([options]);
+
+            return deferred.promise;
+        },
+
+        _rejectLoadingRecord: function(deferred, options, operation) {
+            delete options.callback; // Don't call me again, Susan.
+            deferred.reject(operation);
+        },
+
+        _resolveLoadingRecords: function(deferred, records, options, operation, success) {
+            delete options.callback; // Don't call me again, Susan.
+            if (options.originalCallback) {
+                Ext.callback(options.originalCallback, options.scope || this, [records, operation, success]);
+            }
+
+            deferred.resolve(records);
+        },
+
+        _beforeInitialLoad: function(options) {
+            var grid = this.ownerTree,
+                view = grid.getView();
+
+            // show mask on initial load and root load, but do not show mask for child loads.
+            if (this._isChildLoad(options)) {
+                if (view.loadMask) {
+                    view.loadMask.bindStore(null);
+                    view.loadMask.destroy();
+                    view.loadMask = false;
+                }
+            } else {
+                grid.setLoading(true);
+
+                this.on('load', function(a,b,c) {
+                    console.log('load',a,b,c
+                    )
+                    grid.setLoading(false);
+                }, this, {single: true});
+            }
+        },
+
+        _isViewReady: function() {
+            var grid = this.ownerTree;
+
+            return grid && grid.view;
+
+        },
+
+        _isChildLoad: function(options) {
+            if (options && options.node && !this.isRootNode(options.node))   {
+                return true;
+            }
+
+            return false;
+        },
+
+        _reloadEmptyPage: function(options) {
+            // user's current page count is persisted.
+            // persisted page count may no longer contain any data.
+            // reset to page 1 if no data exists.
+            this._resetCurrentPage();
+            var newOpts = _.clone(options);
+            delete newOpts.start;
+            delete newOpts.callback;
+            return this.load(newOpts);
+        },
+
+        _configureLoad: function(options) {
+            var childTypes;
+            if (Ext.isFunction(options)) {
+                options = {callback: options};
+            }
+
+            options = options || {};
+
+            if (this._isChildLoad(options)) {
+                if (!this.enableHierarchy) {
+                    Ext.Error.raise('You cannot load child nodes if hierarchy is not enabled.');
+                }
+
+                childTypes = this._getChildTypePaths([options.node.self.typePath]);
+                this._configureProxy(childTypes);
+                this._configureChildLoad(options);
+                options.fetch = this._getChildFetch(options, childTypes);
+            } else {
+                this._configureProxy(this.parentTypes);
+                this._configureRootLevelLoad(options);
+                options.fetch = this._getFetchWithCollections(options.fetch || this.fetch, this.parentTypes);
+                if (!_.isEmpty(this.summaryFields)) {
+                    options.fetch = options.fetch.concat('sum:[' + this.summaryFields.join(',') + ']');
+                }
+            }
+            options.fetch.push("Milestones");
+            console.log('fetch',options.fetch);
+
+            options.requester = this;
+
+            if (options.clearOnLoad === false) {
+                var clearOnLoad = this.clearOnLoad;
+                this.clearOnLoad = false;
+                this.on('load', function() {
+                    this.clearOnLoad = clearOnLoad;
+                }, this, {single: true});
+            }
+
+            return options;
+        },
+
+        _configureChildLoad: function(options) {
+
+            options.filters = this._getChildNodeFilters(options.node);
+            options.sorters = this.childLevelSorters || this._getDefaultChildSorters();
+
+            // bring all children back regardless of project scoping
+            options.context = _.clone(this.context || {});
+            options.context.project = null;
+            options.context.projectScopeUp = true;
+            options.context.projectScopeDown = true;
+
+            if (this.childPageSizeEnabled) {
+                options.params = options.params || {};
+                options.params.pagesize = this.getChildPageSize(options.node);
+                options.params.start = options.start || 0;
+            }
+        },
+
+        _configureRootLevelLoad: function(options) {
+            options.params = options.params || {};
+            options.params.pagesize = this.pageSize;
+            options.params.start = this.pageSize * (this.currentPage - 1);
+            options.context = this.context;
+        },
+
+        _getChildNodeFilters: function(node) {
+            var parentType = node.self.typePath,
+                childTypes = this._getChildTypePaths([parentType]),
+                parentFieldNames = this._getParentFieldNames(childTypes, parentType);
+
+            if (parentFieldNames.length) {
+                return [
+                    Rally.data.wsapi.Filter.or(_.map(parentFieldNames, function(parentFieldName) {
+                        return {
+                            property: parentFieldName,
+                            operator: '=',
+                            value: node.get('_ref')
+                        };
+                    }))
+                ];
+            }
+
+            return [];
+        },
+
+        filter: function(filters) {
+            this.fireEvent('beforefilter', this);
+            this.filters.addAll(filters);
+            this._resetCurrentPage();
+            this.load();
+        },
+
+        clearFilter: function(suppressEvent) {
+            this._resetCurrentPage();
+            this.filters.clear();
+
+            if (!suppressEvent) {
+                this.load();
+            }
+        },
+
+        getAt: function(id) {
+            return this.getNodeById(id);
+        },
+
+        getTotalCount: function() {
+            return this.totalCount;
+        },
+
+        /**
+         * Get the pagesize to use when requesting child nodes
+         * The pagesize is different based on if the node you are expanding already has had nodes loaded
+         * This is so we can load 20 items at first, then 200 when you click the 'show more' link
+         *
+         * This is the public interface and will automatically get the pagesize for loading additional nodes
+         * if needed
+         *
+         * @param  {Record} node the node that is being expanded
+         * @return {Int}      the pagesize to use for requesting children
+         */
+        getChildPageSize: function(node) {
+            return node.hasChildNodes() ? this._getChildPageSizeAdditional() : this.childPageSize;
+        },
+
+        /**
+         * @private
+         *
+         * Get the pagesize to use when requesting additional children
+         * We use the original childPageSize if we are in IE or if childPageSizeAdditional is not defined
+         *
+         * @return {Int} the pagesize to use when request additional children
+         */
+        _getChildPageSizeAdditional: function() {
+            return Ext.isIE || !this.childPageSizeAdditional ? this.childPageSize : this.childPageSizeAdditional;
+        },
+
+        nextPage: function() {
+            this._setCurrentPage(this.currentPage + 1);
+            this.load();
+        },
+
+        previousPage: function() {
+            this._setCurrentPage(this.currentPage - 1);
+            this.load();
+        },
+
+        loadPage: function(pageNum) {
+            this._setCurrentPage(pageNum);
+            this.load();
+        },
+
+        clearData: function() {
+            var rootNode = this.getRootNode();
+            if (rootNode) {
+                rootNode.suspendEvents();
+                rootNode.removeAll(false);
+                rootNode.resumeEvents();
+            }
+        },
+
+        _setCurrentPage: function(pageNum) {
+            var maxPage = Math.ceil(this.getTotalCount() / this.pageSize);
+            this.currentPage = Math.min(Math.max(pageNum, 1), maxPage);
+        },
+
+        _resetCurrentPage: function() {
+            if (this.dataLoaded === true) {
+                this.fireEvent('currentpagereset');
+                this.currentPage = 1;
+            }
+        },
+
+        _hasErrors: false,
+
+        hasErrors: function() {
+            return this._hasErrors;
+        },
+
+        _pageIsEmpty: function(operation) {
+            var resultSet = operation.getResultSet();
+            return resultSet &&
+                this.currentPage > 1 &&
+                this.isRootNode(operation.node) &&
+                resultSet.count === 0;
+        },
+
+        onProxyLoad: function(operation) {
+            var resultSet = operation.getResultSet();
+
+            if (operation.error && operation.error.errors && operation.error.errors.length > 0) {
+                this._hasErrors = true;
+                this.fireEvent('error', operation.error.errors);
+            } else {
+                if (resultSet && this.isRootNode(operation.node)) {
+                    this.totalCount = resultSet.total;
+                }
+            }
+
+            if(!this.clearOnLoad && (operation.node === this.getRootNode())) {
+                var recordsById = _.indexBy(operation.getRecords(), function(record) { return record.getId(); });
+                _.each(Ext.clone(operation.node.childNodes), function(childNode) {
+                    var record = recordsById[childNode.getId()];
+                    if(!record) {
+                        childNode.remove(false);
+                    } else if(record.get('VersionId') !== childNode.get('VersionId')) {
+
+                        var newData = _(record.raw).keys().reduce(function(accum, key) {
+                            accum[key] = record.get(key);
+                            return accum;
+                        }, {});
+
+                        childNode.set(newData);
+                        childNode.commit();
+                    }
+                });
+            }
+
+            this.recordLoadEnd();
+            this.recordLoadBegin({description: 'tree store after load callParent'});
+
+            _.invoke(operation.getRecords(), 'resetLeafCount', this.enableHierarchy, this.mapper.getExpandedCollectionNames());
+            this.callParent(arguments);
+
+            this.recordLoadEnd();
+
+            if (this.ownerTree) {
+                this.ownerTree.fireEvent('afterproxyload');
+            }
+        },
+
+        /**
+         * Calls the specified function for each {@link Ext.data.Model record} in the store, walking down the
+         * entire tree.
+         *
+         * @param {Function} fn The function to call. The {@link Ext.data.Model Record} is passed as the first parameter.
+         * Returning `false` aborts and exits the iteration.
+         * @param {Object} [scope] The scope (this reference) in which the function is executed.
+         * Defaults to the current {@link Ext.data.Model record} in the iteration.
+         */
+        each: function(fn, scope) {
+            this._treeWalkingEach(fn, this.tree.root, scope, true);
+        },
+
+        _treeWalkingEach: function(fn, node, scope, ignoreNode) {
+            _.each(node.childNodes, function(childNode) {
+                if (this._treeWalkingEach(fn, childNode, scope) === false) {
+                    return false;
+                }
+            }, this);
+
+            return ignoreNode !== true ? fn.call(scope || node, node) : true;
+        },
+
+        /**
+         * Returns the record node by id
+         * @param {Number/String} id the record id or internal id
+         * @return {Ext.data.NodeInterface}
+         */
+        getNodeById: function(id) {
+            return this.callParent(arguments) || this.findExactRecord(id);
+        },
+
+        /**
+         * Finds a record in the store that matches the given record.
+         * @param {Rally.data.wsapi.Model/Object/String/Number} record Record to match against. Can also be an object with a _ref property or a ref string or an id.
+         */
+        findExactRecord: function(record) {
+            var recordId = Rally.util.Ref.getOidFromRef(record) || record;
+            return this.getRootNode().findChild(this.model.prototype.idProperty, recordId, true);
+        },
+
+        /**
+         * Finds all records in the store with the matching id.
+         * Some stores may contain multiple records with the same id (as parent and child in TreeGrid).
+         *
+         * @param id
+         */
+        findAllRecordsWithId: function(id) {
+            var records = [];
+
+            this.each(function(record) {
+                if (record.getId() === id) {
+                    records.push(record);
+                }
+            });
+
+            return records;
+        },
+
+        _configureProxy: function (typePaths) {
+            this.proxy = this.model.getProxy();
+            console.log('_configureProxy',this.proxy)
+            if (Rally.data.ModelTypes.isCompositeModel(this.model)) {
+                this.proxy.setExtraParam('types', typePaths.join(','));
+            }
+        },
+
+        _getChildFetch: function (options, childTypes) {
+            var fetch = this._getFetchWithCollections(options.fetch || this.fetch, childTypes);
+
+            if (fetch === true) {
+                return true;
+            }
+
+            var sorterProperties = _.pluck(Ext.Array.from(options.sorters), 'property');
+            return _.union(fetch, sorterProperties);
+        },
+
+        _getFetchWithCollections: function(fetch, typePaths, sorters) {
+            if (fetch === true || !fetch || _.isEmpty(fetch)) {
+                return true;
+            }
+
+            if (_.isString(fetch)) {
+                fetch = fetch.split(",");
+            }
+
+            fetch = _.union(fetch, ['ObjectID', 'VersionId']);
+            if (this.enableHierarchy) {
+                fetch = _.union(fetch, this._getCollectionFetchNames(typePaths), this._getParentFieldNames(typePaths));
+
+            }
+            return fetch;
+        }
+    });
+})();
+(function() {
+    var Ext = window.Ext4 || window.Ext;
+
+    /**
+     * @private
+     * FormattedID Column for the TreeGrid.  Allows us to put a button in the header.
+     */
+    Ext.define('Rally.ui.grid.FormattedIDTreeColumn', {
+        extend: 'Ext.tree.Column',
+        alias: 'widget.rallyformattedidtreecolumn',
+
+        requires: [
+            'Ext.tip.ToolTip'
+        ],
+
+        renderTpl: [
+            '<div class="icon-expandall expand-all-button ', Ext.baseCSSPrefix, 'column-header-inner"></div>',
+            '<div id="{id}-titleEl" role="presentation" {tipMarkup}class="', Ext.baseCSSPrefix, 'column-header-inner',
+            '<tpl if="empty"> ', Ext.baseCSSPrefix, 'column-header-inner-empty</tpl> formatted-id-column-header-inner">',
+            '<span id="{id}-textEl" class="', Ext.baseCSSPrefix, 'column-header-text',
+            '{childElCls}">',
+            '{text}',
+            '</span>',
+            '<tpl if="!menuDisabled">',
+            '<div id="{id}-triggerEl" role="presentation" class="', Ext.baseCSSPrefix, 'column-header-trigger',
+            '{childElCls}"></div>',
+            '</tpl>',
+            '</div>',
+            '{%this.renderContainer(out,values)%}'
+        ],
+
+        bubbleEvents: ['expandall', 'collapseall'],
+
+        // Tracks whether expand all is currently activated
+        expandAllActive: false,
+
+        afterRender: function() {
+            this.buttonEl = this.getEl().down('.expand-all-button');
+            this.buttonEl.on('click', this._onButtonClick, this);
+
+            this._createTooltip();
+        },
+
+        _createTooltip: function() {
+            this.tip = Ext.create('Ext.tip.ToolTip', {
+                target: this.buttonEl,
+                html: 'Expand All',
+                anchor: 'top',
+                anchorOffset: -6,
+                listeners: {
+                    beforeshow: function(tip) {
+                        tip.update(this.expandAllActive ? 'Collapse All' : 'Expand All');
+                    },
+                    scope: this
+                }
+            });
+        },
+
+        destroy: function() {
+            var el = this.getEl();
+            if (el) {
+                el.select('.expand-all-button').un('click', this._onButtonClick, this);
+            }
+            if (this.tip) {
+                this.tip.destroy();
+            }
+            this.callParent(arguments);
+        },
+
+        _onButtonClick: function() {
+            if (this.expandAllActive) {
+                this._collapseAll();
+            } else {
+                this._expandAll();
+            }
+        },
+
+        _expandAll: function() {
+            this.buttonEl.removeCls('icon-expandall');
+            this.buttonEl.addCls('icon-collapseall');
+            this.fireEvent('expandall', this);
+            this.expandAllActive = true;
+        },
+
+        _collapseAll: function() {
+            this.buttonEl.removeCls('icon-collapseall');
+            this.buttonEl.addCls('icon-expandall');
+            this.fireEvent('collapseall', this);
+            this.expandAllActive = false;
+        }
+    });
+})();
+(function() {
+    var Ext = window.Ext4 || window.Ext;
+
+    /**
+     * The tree grid enables the display of hierarchical artifact data.
+     *
+     *      Ext.create('Rally.data.wsapi.TreeStoreBuilder').build({
+     *          models: ['userstory'],
+     *          autoLoad: true,
+     *          enableHierarchy: true
+     *       }).then({
+     *           success: function(store) {
+     *              Ext.create('Ext.Container', {
+     *                  items: [{
+     *                      xtype: 'rallytreegrid',
+     *                      columnCfgs: [
+     *                          'Name',
+     *                          'Owner'
+     *                      ],
+     *                      store: store
+     *                  }],
+     *                  renderTo: Ext.getBody()
+     *              });
+     *          }
+     *      });
+     *
+     * Additional tree grid examples can be found in the [Examples](#!/example) section.
+     *
+     */
+    Ext.define('Rally.ui.grid.TreeGrid', {
+        extend: 'Ext.tree.Panel',
+        alias: 'widget.rallytreegrid',
+        cls: 'rally-grid',
+
+        requires: [
+            'Ext.data.NodeInterface',
+            'Ext.selection.Model',
+            'Ext.state.Manager',
+            'Rally.Message',
+            'Rally.data.wsapi.TreeStoreBuilder',
+            'Rally.ui.tree.PagingToolbar',
+            'Rally.ui.grid.FieldColumnFactory',
+            'Rally.ui.grid.FormattedIDTreeColumn',
+            'Rally.ui.grid.ColumnBuilder',
+            'Rally.ui.grid.RowModel',
+            'Rally.ui.grid.TreeGridExpandTracker',
+            'Rally.ui.grid.TreeView',
+            'Rally.ui.grid.plugin.CellEditing',
+            'Rally.ui.grid.plugin.CellValidationUi',
+            'Rally.ui.grid.plugin.ClickHandlerPlugin',
+            'Rally.ui.grid.plugin.ColorPickerPlugin',
+            'Rally.ui.grid.plugin.ColumnAutoSizer',
+            'Rally.ui.grid.plugin.FormattedIDHoverable',
+            'Rally.ui.grid.plugin.TreeGridChildPager',
+            'Rally.ui.grid.plugin.TreeGridObjectUpdateListener',
+            'Rally.ui.grid.plugin.TreeViewDragDrop',
+            'Rally.ui.grid.plugin.Validation',
+            'Rally.ui.grid.plugin.ViewVisibilityListener',
+            'Rally.ui.grid.feature.SummaryRow',
+            'Rally.ui.grid.data.ColumnFetchBuilder',
+            'Rally.ui.grid.TreeGridExpandTracker',
+            'Rally.util.Animation',
+            'Rally.util.Ref',
+            'Rally.ui.grid.plugin.BufferedRenderer',
+            'Rally.ui.grid.plugin.InlineAddRowExpander',
+            'Rally.realtime.Realtime',
+            'Rally.realtime.RealtimePlugin'
+        ],
+
+        mixins: {
+            messageable: 'Rally.Messageable',
+            stateful: 'Ext.state.Stateful',
+            filternotifiable: 'Rally.ui.filter.FilterNotifiable',
+            clientMetrics: 'Rally.clientmetrics.ClientMetricsRecordable',
+            treeGridRankable: 'Rally.ui.grid.dragdrop.TreeGridRankable'
+        },
+
+        clientMetrics: [
+            {
+                beginEvent: 'expandbatch',
+                endEvent: 'afterexpandbatch',
+                description: 'expand batch'
+            },
+            {
+                beginEvent: 'collapsebatch',
+                endEvent: 'aftercollapsebatch',
+                description: 'collapse batch'
+            },
+            {
+                beginEvent: 'beforeitemcollapse',
+                endEvent: 'afteritemcollapse',
+                description: 'item collapse'
+            },
+            {
+                beginEvent: 'beforeitemexpand',
+                endEvent: 'itemexpand',
+                description: 'item expand'
+            }
+        ],
+
+        /**
+         * @private
+         * @property
+         *
+         * The state that was applied by #applyState.
+         *
+         * Saved so plugins that are initialized after state is applied can access state.
+         */
+        appliedState: undefined,
+
+        config: {
+            /**
+             * @cfg {Rally.data.wsapi.TreeStore} (required)
+             * A TreeStore instance, used to handle state and facilitate hierarchical behavior (enableHierarchy parameter on the store)
+             * Must specify a store see {@link Rally.data.wsapi.TreeStoreBuilder} for building stores
+             */
+            store: undefined,
+
+            /**
+             * @cfg {Object}
+             * The object to enable displayed when not using collection filtering and there is no data.  Can be html string to be
+             * inserted into the rendering template for the no data message in the {@link Rally.ui.view.NoData} mixin on the view.
+             */
+            noDataHelpLink: undefined,
+
+            /**
+             * @cfg {String}
+             * An optional item name to display in the no data text. Defaults to 'work item'.
+             */
+            noDataItemName: undefined,
+
+            /**
+             * @cfg {Array}
+             * Accepts {@link Ext.grid.Panel} column configs, or a string to use the default renderer for the type
+             */
+            columnCfgs: [],
+
+            /**
+             * @cfg {Boolean}
+             * True to always display default columns, regardless of save column state.
+             */
+            alwaysShowDefaultColumns: false,
+
+            /**
+             * @cfg {Boolean}
+             * True to use the Buffered Renderer plugin.
+             */
+            bufferedRenderer: false,
+
+            /**
+             * @cfg {Boolean}
+             * Automatically add all fields from the Model into the columns list
+             * Note this only is compatible with an instance of {@link Rally.data.wsapi.Model}
+             */
+            autoAddAllModelFieldsAsColumns: false,
+
+            /**
+             * @cfg {Boolean}
+             * Automatically add gear menu column to the grid
+             */
+            shouldShowRowActionsColumn: true,
+
+            /**
+             * @cfg {Object}
+             * Custom config for the row action column
+             */
+            rowActionColumnConfig: null,
+
+            disableColumnMenus: true,
+
+            /**
+             * @cfg {Boolean}
+             * Enables the behavior for the blocked reason plugin
+             */
+            enableBlockedReasonPopover: true,
+
+            /**
+             * @cfg {Boolean}
+             * Enables a one-click to change the schedule state
+             */
+            enableScheduleStateClickable: true,
+
+            /**
+             * @cfg {Boolean}
+             * Enables drag drop of rows, persists the rank,
+             * Uses the {#link Rally.ui.grid.plugin.TreeViewDragDrop} plugin
+             */
+            enableRanking: true,
+
+            /**
+             * @cfg {Boolean}
+             * Enables inline editing of cells,
+             * Uses the {@link Rally.ui.grid.plugin.CellEditing} plugin
+             */
+            enableEditing: true,
+
+            /**
+             * @cfg {Boolean}
+             * Enables bulk edit
+             */
+            enableBulkEdit: true,
+
+            /**
+             * @cfg {Object}
+             * Configuration options for the bulk edit menu.
+             * These properties will be passed to the {Rally.ui.menu.bulk.RecordMenu} on creation
+             */
+            bulkEditConfig: {},
+
+            lines: false,
+            /**
+             * @cfg {Boolean}
+             * Enables validation icons on a grid,
+             * Uses the {@link Rally.ui.grid.plugin.Validation} plugin
+             * and the {@link Rally.ui.grid.plugin.CellValidationUi} plugin
+             */
+            enableValidationUi: true,
+
+            /**
+             * @cfg {Object}
+             * Additional config to pass to the editing plugin, depends on the {@link #enableEditing} flag to be set to true
+             */
+            editingConfig: {
+                publishMessages: true
+            },
+
+            /**
+             * @cfg {Boolean}
+             * Enables inline add
+             */
+            enableInlineAdd: false,
+
+            /**
+             * @cfg {Object}
+             * Additional config to pass to the inline add plugin, depends on the {@link #enableInlineAdd} flag to be set to true
+             */
+            inlineAddConfig: {
+
+            },
+
+            plugins: [],
+
+            selModel: {
+                selType: 'rallyrowmodel'
+            },
+
+            context: undefined,
+
+            rootVisible: false,
+
+            viewConfig: {
+                xtype: 'rallytreeview',
+                animate: false,
+                loadMask: false,
+                forceFit: true,
+                plugins: [
+                    'rallytreeviewdragdrop',
+                    'rallyviewvisibilitylistener'
+                ]
+            },
+
+            /**
+             * @cfg {String}
+             * This column will contain a cheveron to expand/collapse the row if the row has children.
+             * This field will be next to the rank column.
+             */
+            treeColumnDataIndex: 'FormattedID',
+
+            /**
+             * @cfg {String}
+             * The label for the treecolumn's header.
+             */
+            treeColumnHeader: 'ID',
+
+            /**
+             * @cfg {Boolean}
+             * Whether the tree column should be resizable
+             */
+            treeColumnResizable: false,
+
+            treeColumnRenderer: undefined,
+
+            /**
+             * @cfg {String}
+             * The field to be displayed next to the Expand icon on a tree grid.  Defaults to DragAndDropRank.
+             */
+            rankColumnDataIndex: 'DragAndDropRank',
+
+
+            /**
+             * @cfg {Function} onBeforeRecordMenuEdit
+             * Function to execute before editing a record from the gear menu. Return false to not perform the action.
+             * @param {Rally.data.Model} record The record that is being acted on.
+             */
+            onBeforeRecordMenuEdit: Ext.emptyFn,
+
+            /**
+             * @cfg {Function} onBeforeRecordMenuCopy
+             * Function to execute before copying a record from the gear menu. Return false to not perform the action.
+             */
+            onBeforeRecordMenuCopy: Ext.emptyFn,
+
+            /**
+             * @cfg {Function} onRecordMenuCopy
+             * Function to execute after copying a record from the gear menu.
+             * @param {Rally.data.Model} copiedRecord The record that is being acted on.
+             * @param {Rally.data.Model} originalRecord The record that is being acted on.
+             * @param {Ext.data.Operation} operation The WSAPI operation
+             */
+            onRecordMenuCopy: Ext.emptyFn,
+
+            /**
+             * @cfg {Function} onBeforeRecordMenuDelete
+             * Function to execute before deleting a record from the gear menu. Return false to not perform the action.
+             */
+            onBeforeRecordMenuDelete: Ext.emptyFn,
+
+            /**
+             * @cfg {Function} onRecordMenuDelete
+             * Function to execute after deleting a record from the gear menu.
+             */
+            onRecordMenuDelete: Ext.emptyFn,
+
+            /**
+             * @cfg {Function} onBeforeRecordMenuRankHighest
+             * Function to execute before ranking a record highest from the gear menu. Return false to not perform the action.
+             * @param {Rally.data.Model} record The record that is being acted on.
+             */
+            onBeforeRecordMenuRankHighest: Ext.emptyFn,
+
+            /**
+             * @cfg {Function} onBeforeRecordMenuRankLowest
+             * Function to execute before ranking a record highest from the gear menu. Return false to not perform the action.
+             * @param {Rally.data.Model} record The record that is being acted on.
+             */
+            onBeforeRecordMenuRankLowest: Ext.emptyFn,
+
+            /**
+             * @cfg {Function} onRecordMenuRemove
+             * Function to execute after removing a record from the gear menu.
+             * @param {Rally.data.Model} record The record that is being acted on.
+             */
+            onRecordMenuRemove: Ext.emptyFn,
+
+            /**
+             * @cfg {Array}
+             * Array of configurations for summary e.g. {field: 'PlanEstimate', type: 'sum', units: 'pt'}
+             */
+            summaryColumns: [],
+
+            expandTracker: null,
+
+            /**
+             * @cfg {boolean}
+             * If true, cells will word wrap.  When false, if contents does not fit the cell
+             * the content will be truncated and ellipsis added to the end.
+             */
+            variableRowHeight: true,
+
+            expandAllInColumnHeaderEnabled: false
+        },
+
+        constructor: function(config) {
+            this.mergeConfig(config);
+
+            this.treeColumnRenderer = this.treeColumnRenderer || this._defaultTreeColumnRenderer;
+            this.plugins = this._setupPlugins(config);
+            this.features = this._setupFeatures(config);
+
+            this.callParent(arguments);
+        },
+
+        initComponent: function() {
+            if (!this.store) {
+                Ext.Error.raise('A store must be specified in the config');
+            }
+
+            if (!this.expandTracker) {
+                this.expandTracker = Ext.create('Rally.ui.grid.TreeGridExpandTracker');
+            }
+
+            if (!this.variableRowHeight) {
+                this.addCls('rally-grid-cell-no-wrap');
+            }
+
+            this.addEvents([
+            /**
+             * @event filterchange
+             * Fires when the grid's filter is changed.
+             * @param {Ext.util.Filter} filter
+             * @param Boolean clearFilter - true if existing filters should be cleared before applying new filter
+             * @param {Boolean} ignoreDefaultFilters True if filters passed in at initialization time should be removed when clearing other filters
+             */
+                'filterchange',
+            /**
+             * @event
+             * Fires when user wants all items expanded
+             * @param {Ext.Component} this
+             */
+                'expandall',
+            /**
+             * @event
+             * Fires when user wants all item collapsed
+             * @param {Ext.Component} this
+             */
+                'collapseall',
+            /**
+             * @event
+             * Fires when all items are expanded and after all childern are loaded and rendered
+             * @param {Ext.Component} this
+             * @param {Array} expanded nodes
+             */
+                'afterexpandbatch',
+            /**
+             * @event
+             * Fires when all items are collapsed and after all childern are rendered
+             * @param {Ext.Component} this
+             * @param {Array} collapsed nodes
+             */
+                'aftercollapsebatch',
+            /**
+             * @event
+             * Fires after a new child has been added to a parent and rendered.
+             *
+             * @param {Ext.Component} this
+             * @param {Ext.data.Mode} parentNode
+             * @param {Ext.data.Mode} childNode
+             */
+                'afterchildadd'
+            ]);
+
+            this.store.requester = this.store.requester || this;
+            this.store.clientMetricsParent = this;
+
+            if (this.enableBulkEdit) {
+                this.selType = 'rallycheckboxmodel';
+                this.selModel = {
+                    injectCheckbox: this.enableRanking ? 1 : 0
+                };
+            }
+
+            this._applyInitialState();
+            this._buildDockedItems();
+            this._buildColumns();
+            this._applySorters();
+            this._applyFetch();
+            this._initView();
+
+            this.callParent(arguments);
+
+            this.subscribe(Rally.Message.bulkImport, function() {
+                this.refresh({
+                    callback: function(records, operation, success) {
+                        this.store.sort();
+                    },
+                    scope: this
+                });
+            }, this);
+        },
+
+        _defaultTreeColumnRenderer: function (value, metaData, record, rowIdx, colIdx, store) {
+            store = store.treeStore || store;
+            return Rally.ui.renderer.RendererFactory.getRenderTemplate(store.model.getField('FormattedID')).apply(record.data);
+        },
+
+        _applySorters: function() {
+            var store = this.store,
+                sorterConfig,
+                rankField;
+
+            if (store.sorters.getCount() > 0) {
+                return; // use configured sorters
+            }
+
+            if (Rally.data.Ranker.isRankable(store.model)) {
+                rankField = Rally.data.Ranker.getRankField(store.model);
+                sorterConfig = Rally.data.util.Sorter.sorters(rankField + ' ASC').pop();
+            } else {
+                sorterConfig = Rally.data.util.Sorter.getDefaultSort(store.model.typePath, {asSorter: true}).pop();
+            }
+
+            store.sorters.add(Ext.create('Ext.util.Sorter', sorterConfig));
+        },
+
+        _applyFetch: function() {
+            this.store.fetch = this._buildFetch();
+
+            if (this._shouldShowSummary()) {
+                this.store.summaryFields = _.pluck(this.summaryColumns, 'field');
+            }
+        },
+
+        _addStoreListeners: function() {
+            this.relayEvents(this.store, [
+                'load',
+                'beforeexpand',
+                'beforecollapse',
+                'beforeload',
+                'expand',
+                'collapse',
+                'currentpagereset',
+                'datachanged',
+                'excludebyfilter',
+                'movetopage',
+                'beforefilter',
+                'afterbuscreate',
+                'afterbusupdate',
+                'afterbusremove'
+            ], 'store');
+            this.on('storeload', this._onStoreLoad, this);
+            this.on('storedatachanged', this._onDataChanged, this);
+            this.on('storeexcludebyfilter', this._onExcludeByFilter, this);
+            this.on('storemovetopage', this._onMoveToPage, this);
+            this._initStateEvents();
+        },
+
+        _initPager: function() {
+            var pager = this.down('#pagingToolbar');
+
+            this.relayEvents(pager, ['change', 'beforechange'], 'pagingtoolbar');
+
+            this._addPageResetListeners();
+        },
+
+        _initView: function() {
+            if (!this.rendered) {
+                this.on('afterrender', this._initView, this, {single: true});
+                return;
+            }
+
+            this._addStoreListeners();
+            this._initPager();
+            this._fireComponentReady();
+        },
+
+        _initStateEvents: function() {
+            this.on('storeload', function() {
+                this.readyForStateEvents = true;
+                this.addStateEvents(['columnresize', 'columnmove', 'sortchange', 'reconfigure', 'pagingtoolbarchange']);
+                this.recordComponentReady();
+            }, this, {
+                single: true,
+                buffer: 100
+            });
+        },
+
+        _applyInitialState: function() {
+            var id = this.getStateId() || '',
+                state = this.appliedState || Ext.state.Manager.getProvider().get(id) || {};
+
+            this.applyState(state);
+        },
+
+        _fireComponentReady: function() {
+            if (Rally.BrowserTest) {
+                Rally.BrowserTest.publishComponentReady(this);
+                this.publish(Rally.Message.treeLoaded);
+            }
+        },
+
+        destroy: function() {
+            this._removePageResetListeners();
+            this.callParent(arguments);
+        },
+
+        refresh: function(options) {
+            return this.store.load(_.assign({
+                node: this.getRootNode(),
+                clearOnLoad: false
+            }, options));
+        },
+
+        refreshAfterBulkAction: function() {
+            return Deft.Promise.when(true);
+        },
+
+        _addPageResetListeners: function() {
+            this.on('storecurrentpagereset', this._resetCurrentPage, this);
+
+        },
+
+        _removePageResetListeners: function() {
+            this.un('storecurrentpagereset', this._resetCurrentPage, this);
+        },
+
+        _getColumnCfgs: function() {
+            return this.columnCfgs;
+        },
+
+        _isStatefulColumn: function(columnName) {
+            columnName = columnName.toLowerCase();
+
+            if (this.store.enableHierarchy && columnName === this.treeColumnDataIndex.toLowerCase()) {
+                return false;
+            }
+
+            if (this.enableRanking && columnName === this.rankColumnDataIndex.toLowerCase()) {
+                return false;
+            }
+
+            return true;
+        },
+
+        _getStatefulColumns: function(columnCfgs) {
+            return _.filter(columnCfgs, function(columnCfg) {
+                var columnName = Ext.isString(columnCfg) ? columnCfg: columnCfg.dataIndex;
+                return !Ext.isEmpty(columnName) && this._isStatefulColumn(columnName);
+            }, this);
+        },
+
+        addStateEvents: function() {
+            // overridden to ignore state events set before initial load
+            if (this.readyForStateEvents) {
+                this.callParent(arguments);
+            }
+        },
+
+        applyState: function(state) {
+            this.appliedState = state;
+            this._applyState(state);
+        },
+
+        _applyState: function(state) {
+            if (state.columns) {
+                // make sure flex is set correctly for column configs saved in a preference
+                _.each(state.columns, this._setColumnFlex, this);
+                if (this.enableRanking) {
+                    state.columns = this._removeExistingRankColumn(state.columns);
+                }
+
+                this._applyStatefulColumns(state.columns);
+            }
+
+            if (state.pagingToolbar) {
+                var store = this.getStore();
+                store.pageSize = state.pagingToolbar.pageSize;
+                store.currentPage = state.pagingToolbar.currentPage;
+            }
+
+            if (state.sorters) {
+                var sorters = _.transform(state.sorters, function (collection, sorterState) {
+                    if(Rally.data.Ranker.isRankField(sorterState.property)) {
+                        sorterState.property = Rally.data.Ranker.getRankField(this.store.model);
+                    }
+
+                    collection.add(Ext.create('Ext.util.Sorter', {
+                        property: sorterState.property,
+                        direction: sorterState.direction
+                    }));
+                }, Ext.create('Ext.util.MixedCollection'), this);
+                this.getStore().sorters = sorters;
+            }
+
+            if (state.expandedRowPersistence) {
+                this.expandedRowPersistenceState = state.expandedRowPersistence;
+            }
+
+            this.fireEvent('staterestore', this, state);
+        },
+
+        _applyStatefulColumns: function(columns) {
+            if (this.alwaysShowDefaultColumns) {
+                _.each(this.columnCfgs, function(columnCfg) {
+                    var dataIndex = _.has(columnCfg.dataIndex) ? columnCfg.dataIndex : columnCfg;
+                    if (!_.any(columns, {dataIndex: dataIndex})) {
+                        columns.push(columnCfg);
+                    }
+                });
+            }
+
+            this.columnCfgs = columns;
+        },
+
+        _removeExistingRankColumn: function(columns) {
+            return _.filter(columns, function(col) {
+                return col.dataIndex !== this.rankColumnDataIndex;
+            }, this);
+        },
+
+        getState: function() {
+            var state = {},
+                statefulColumns = this._getStatefulColumns(this.headerCt.getGridColumns());
+
+            state.columns = _.map(statefulColumns, this._getColumnConfigFromColumn, this);
+
+            state.pagingToolbar = {
+                pageSize: this.getStore().pageSize,
+                currentPage: this.getStore().currentPage
+            };
+
+            state.sorters = _.map(this.getStore().sorters.getRange(), function(sorter) {
+                return {
+                    property: sorter.property,  //Why does this differ from what is in _initSorters()?
+                    direction: sorter.direction
+                };
+            });
+
+            state.expandedRowPersistence = this.expandedRowPersistenceState;
+
+            return state;
+        },
+
+        // Buffer method to avoid spewing preference updates when state is updated multiple times within a short time period.
+        saveState: Ext.Function.createBuffered(function () {
+            if (!this.isDestroyed) {
+                Ext.state.Stateful.prototype.saveState.apply(this, arguments);
+            }
+        }, 100),
+
+        /**
+         * Reconfigure the columns to be displayed in the grid.
+         * @param {Boolean} true to override existing column config with new column config already exists
+         * @param {Boolean} true to suspend store load if it will be triggered elsewhere
+         */
+        reconfigureWithColumns: function(columnCfgs, reconfigureExistingColumns, suspendLoad) {
+            columnCfgs = this._getStatefulColumns(columnCfgs);
+
+            if (!reconfigureExistingColumns) {
+                columnCfgs = this._mergeColumnConfigs(columnCfgs, this.columns);
+            }
+
+            this.columnCfgs = columnCfgs;
+            this._buildColumns(true);
+            this.getStore().fetch = this._buildFetch();
+
+            this.on('reconfigure', function() {
+                this.headerCt.setSortState();
+            }, this, {single: true});
+            this.reconfigure(null, this.columns);
+            this.columns = this.headerCt.items.getRange();
+
+            if (!suspendLoad) {
+                this.getStore().load();
+            }
+        },
+
+        _getColumnConfigFromColumn: function(column) {
+            var config = {
+                xtype: column.xtype,
+                dataIndex: column.dataIndex,
+                text: column.text,
+                sortable: column.sortable,
+                width: Ext.isFunction(column.getWidth) ? column.getWidth() : column.width
+            };
+
+            this._setColumnFlex(config);
+
+            return config;
+        },
+
+        _setColumnFlex: function(column) {
+            if (column.width) {
+                column.flex = column.width;
+                delete column.width;
+            } else if (!_.isNumber(column.flex)) {
+                column.flex = Rally.ui.grid.FieldColumnFactory.defaultFlexValue;
+            }
+        },
+
+        _getDataIndex: function(column) {
+            return column.dataIndex ? column.dataIndex : column;
+        },
+
+        _mergeColumnConfigs: function(newColumns, oldColumns) {
+            return _.map(newColumns, function(newColumn) {
+                var oldColumn = _.find(oldColumns, {dataIndex: this._getDataIndex(newColumn)});
+                if (oldColumn) {
+                    return this._getColumnConfigFromColumn(oldColumn);
+                }
+
+                return newColumn;
+            }, this);
+        },
+
+        _getExpandColumnCfg: function() {
+            var xtype = this.expandAllInColumnHeaderEnabled ? 'rallyformattedidtreecolumn' : 'treecolumn';
+
+            return {
+                xtype: xtype,
+                text: this.treeColumnHeader,
+                dataIndex: this.treeColumnDataIndex,
+                draggable: false,
+                resizable: this.treeColumnResizable,
+                renderer: this.treeColumnRenderer,
+                scope: this,
+                menuDisabled: this.disableColumnMenus,
+                listeners: {
+                    beforerender: function(column) {
+                        if (!column.initialConfig.renderer) {
+                            column.origRenderer = Rally.ui.grid.CellRendererFactory.createRendererFunction(column);
+                        }
+                    }
+                }
+            };
+        },
+
+        _buildColumns: function(isReconfiguring) {
+            var model = this.getStore().model;
+            var disabledEditorColumns = ['DisplayColor'].concat(this.enableBlockedReasonPopover ? ['Blocked'] : []);
+            var columnCfgs = Ext.clone(this._getColumnCfgs());
+
+            if (!this.enableRanking) {
+                this.rowActionColumnConfig = _.merge({
+                    menuOptions: {
+                        showRankMenuItems: false
+                    }
+                }, this.rowActionColumnConfig);
+            }
+
+            var rowActionOptions = this.shouldShowRowActionsColumn && this.rowActionColumnConfig ? this.rowActionColumnConfig : this.shouldShowRowActionsColumn;
+
+            if (this.store.enableHierarchy) {
+                columnCfgs.unshift(this._getExpandColumnCfg());
+            }
+            this.columns = Ext.create('Rally.ui.grid.ColumnBuilder').
+                withDefaultColumns(columnCfgs).
+                withSortableColumns(this.sortableColumns).
+                shouldAutoAddAllModelFieldsAsColumns(this.autoAddAllModelFieldsAsColumns).
+                withDisableColumnMenus(this.disableColumnMenus).
+                withEditorsDisabledForColumns(disabledEditorColumns).
+                withEditingEnabled(this.enableEditing).
+                withRankingEnabled(this.enableRanking).
+                withTreeEnabled(true).
+                withSummaryColumns(this.summaryColumns).
+                withRankColumn(this.enableRanking ? this.rankColumnDataIndex : false).
+                shouldShowRowActionsColumn(rowActionOptions).
+                shouldResetFlexValuesToDefaults(isReconfiguring).
+                buildCmps(model);
+        },
+
+        getAllFetchFields: function() {
+            return this.getStore().fetch;
+        },
+
+        _buildFetch: function() {
+            var fetchConfig = this.getStore().fetch || [];
+
+            if (fetchConfig === true) {
+                return fetchConfig;
+            }
+
+            var fetchFields = Ext.create('Rally.ui.grid.data.ColumnFetchBuilder').build({
+                grid: this,
+                columns: this.columns,
+                fetch: fetchConfig
+            });
+
+            return _.union(fetchFields, [this.treeColumnDataIndex]);
+        },
+
+        /**
+         * Highlights the row representing the passed in record.
+         * @param record
+         */
+        highlightRowForRecord: function(records) {
+            var store = this.getStore(),
+                recordIds = _.uniq(_.map(Ext.Array.from(records), function(record) {
+                    return record.getId();
+                }));
+
+            _.each(recordIds, function(recordId) {
+                var relatedRecords = store.findAllRecordsWithId(recordId);
+
+                _.each(relatedRecords, function(relatedRecord) {
+                    var row = this.getView().getNode(relatedRecord);
+                    if (row) {
+                        Rally.util.Animation.highlight(Ext.fly(row).select('td'));
+                    }
+                }, this);
+            }, this);
+        },
+
+        getItemSelector: function() {
+            return this.view.getItemSelector();
+        },
+
+        getRecord: function(x) {
+            return this.view.getRecord(x);
+        },
+
+        /**
+         * Get models used by this grid
+         *
+         * @return {Model[]} models
+         */
+        getModels: function() {
+            return [this.store.model];
+        },
+
+        _setupPlugins: function(config) {
+            var plugins = config.plugins || [];
+
+            plugins.push({ptype: 'rallytreegridobjectupdatelistener'});
+            plugins.push({ptype: 'rallycolorpickerplugin'});
+
+            if (this.enableEditing) {
+                plugins.push(Ext.apply({
+                    ptype: 'rallycellediting',
+                    messageBus: this._getMessageBus()
+                }, this.editingConfig));
+
+                if (this.enableValidationUi) {
+                    plugins.push({ptype: 'rallygridvalidation'});
+                    plugins.push({ptype: 'rallycellvalidationui'});
+                }
+            }
+
+            if (this.enableBlockedReasonPopover) {
+                plugins.push({ptype: 'rallyblockedreasonpopoverplugin'});
+            }
+
+            if (!this.treeColumnResizable) {
+                plugins.push({ptype: 'rallycolumnautosizerplugin'});
+            }
+
+            if (this.bufferedRenderer) {
+                plugins.push({
+                    ptype: 'rallybufferedrenderer',
+                    trailingBufferZone: 10, // increasing these values to 15 significantly degrades grid refresh performance
+                    leadingBufferZone: 10,
+                    variableRowHeight: this.variableRowHeight
+                });
+            }
+
+            if (this.store && this.store.enableHierarchy) {
+                plugins.push({ptype: 'rallytreegridchildpager'});
+            }
+
+            plugins.push({ptype: 'rallyclickhandlerplugin'});
+
+            if(this.enableInlineAdd){
+                plugins.push(Ext.apply({
+                    ptype: 'rallyinlineaddrowexpander'
+                }, this.inlineAddConfig));
+            }
+
+            if (Rally.realtime.Realtime.enabled) {
+                plugins.push({ptype: 'rallyrealtime'});
+            }
+
+            plugins.push('rallyboardformattedidhoverable');
+
+            return _.uniq(plugins, 'ptype');
+        },
+
+        _setupFeatures: function(config) {
+            var features = [];
+            if (this._shouldShowSummary()) {
+                features.push({
+                    ftype: 'summaryrow',
+                    id: 'summaryrow'
+                });
+            }
+
+            return features;
+        },
+
+        _shouldShowSummary: function() {
+            return !(_.isEmpty(this.summaryColumns));
+        },
+
+        _resetCurrentPage: function() {
+            if (this.stateful) {
+                //  NOTE: Considered extending Ext.state.stateful and adding a method to override a property on the
+                //  state (which is what this is doing). If you are reading this to see how this was done, it's
+                //  probably time to go ahead and make that change.
+                var state = Ext.state.Manager.get(this.getStateId());
+                if (state && Ext.isObject(state.pagingToolbar)) {
+                    state.pagingToolbar.currentPage = 1;
+                    Ext.state.Manager.set(this.getStateId(), state);
+                }
+            }
+        },
+
+        _onStoreLoad: function() {
+            this._showNoData();
+            this._toggleHierarchy();
+        },
+
+        _onDataChanged: function() {
+            this._showNoData();
+        },
+
+        _onExcludeByFilter: function(excludedRecord) {
+            if (_.isFunction(this.showNewItemExcludedByFiltersWarning)) {
+                this.showNewItemExcludedByFiltersWarning(excludedRecord);
+            }
+        },
+
+        _onMoveToPage: function(record, pageNumber) {
+            if (_.isFunction(this.showItemMovedToPageNotification)) {
+                var me = this;
+                this.showItemMovedToPageNotification(record, pageNumber, function() {
+                    me.getStore().loadPage(pageNumber);
+                });
+            }
+        },
+
+        _showNoData: function() {
+            if (!this.store.getRootNode().hasChildNodes()) {
+                this.getView().showNoData({
+                    noDataHelpLink: this.noDataHelpLink,
+                    itemName: this.noDataItemName,
+                    filters: [],
+                    useFilterCollection: false
+                });
+            }
+        },
+
+        _toggleHierarchy: function() {
+            if (this.getStore().isHierarchyEnabled()) {
+                this.addCls('enable-hierarchy');
+                this.removeCls('disable-hierarchy');
+            } else {
+                this.removeCls('enable-hierarchy');
+                this.addCls('disable-hierarchy');
+            }
+        },
+
+        _buildDockedItems: function() {
+            this.dockedItems = this.dockedItems || [];
+            this.dockedItems.push(Ext.apply({
+                itemId: 'pagingToolbar',
+                xtype: 'rallytreepagingtoolbar',
+                dock: 'bottom',
+                store: this.store
+            }, this.pagingToolbarCfg));
+        }
+    });
+})();
+(function() {
+    var Ext = window.Ext4 || window.Ext;
+
+    /**
+     * A ComboBox for choosing a milestone
+     *
+     *     @example
+     *     Ext.create('Ext.Container', {
+     *         items: [{
+     *             xtype: 'rallymilestonecombobox'
+     *          }],
+     *          renderTo: Ext.getBody().dom
+     *     });
+     */
+    Ext.define('Rally.ui.combobox.MilestoneComboBox', {
+        extend: 'Rally.ui.combobox.ComboBox',
+        alias: 'widget.rallymilestonecombobox',
+        requires: [
+            'Rally.util.DateTime',
+            'Rally.data.util.Sorter'
+        ],
+
+        mixins: [
+            'Rally.ui.MilestoneListHeadings'
+        ],
+
+        config: {
+            allowNoEntry: false,
+            hideLabel: true,
+            width: 300,
+            storeConfig: {
+                autoLoad: true,
+                model: Ext.identityFn('milestone'),
+                remoteFilter: false,
+                remoteSort: false,
+                limit: Infinity
+            },
+            listConfig: {
+                minWidth: 385,
+                cls: 'milestone-list',
+                emptyText: 'No Milestones Defined'
+            },
+            tpl: Ext.create('Ext.XTemplate',
+                '<tpl for=".">',
+                '<div class="' + Ext.baseCSSPrefix + 'boundlist-item">' +
+                '<div class="milestone-name"><b>{[values.FormattedID]}</b>:  {[values._refObjectName]}</div>',
+                '<div class="milestone-date">{[Rally.util.DateTime.formatWithDefault(values.TargetDate)]}</div>',
+                '<div class="milestone-raw-date">{[values.TargetDate]}</div>',
+                '</div>',
+                '</tpl>'
+            )
+        },
+
+        initComponent: function () {
+            this.storeConfig.sorters = [{
+                sorterFn: Rally.data.util.Sorter.getDefaultSortFn('Milestone')
+            }];
+            this.callParent(arguments);
+        },
+
+        createPicker: function() {
+            var picker = this.callParent(arguments);
+
+            picker.on({
+                show: this._addListHeaders,
+                refresh: this._addListHeaders,
+                scope: this,
+                filterSelectedNodes: false
+            });
+
+            return picker;
+        }
+    });
+})();
 Ext.define('MilestoneTrackingApp.CFDCalculator', {
     extend: 'Rally.data.lookback.calculator.TimeSeriesCalculator',
     config: {
@@ -640,8 +2708,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         extend: "Ext.Container",
         requires: [ 'Rally.ui.chart.Chart' ],
         mixins: [
-        //    "MilestoneTrackingApp.IterationProgressMixin",
-          //  "MilestoneTrackingApp.IterationProgressChart"
+            "MilestoneTrackingApp.IterationProgressMixin",
+            "MilestoneTrackingApp.IterationProgressChart"
         ],
         cls: 'rally-iteration-progress-cumulative-flow-chart',
         currentScope: undefined,
@@ -652,26 +2720,18 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         minimalMode: false,
         initComponent: function() {
             this.callParent(arguments);
-            console.log('initcomponent')
-            this.add({
-                xtype: 'rallychart',
+
+            var chartConfig = {
                 storeType: 'Rally.data.lookback.SnapshotStore',
                 storeConfig: this._getStoreConfig(),
                 calculatorType: 'MilestoneTrackingApp.CFDCalculator',
                 calculatorConfig: {
                     stateFieldName: 'ScheduleState',
-                    stateFieldValues: ['Defined', 'In-Progress', 'Completed', 'Accepted']
-                },
-                chartColors: [  // RGB values obtained from here: http://ux-blog.rallydev.com/?cat=23
-                    "#C0C0C0",  // $grey4
-                    "#FF8200",  // $orange
-                    "#F6A900",  // $gold
-                    "#FAD200",  // $yellow
-                    "#CADDA3",  // $lime
-                    "#1E7C00"
-                ],
-                chartConfig: this._getChartConfig()
-            });
+                    stateFieldValues: this.scheduleStates
+                }
+            };
+            chartConfig = this._createMinimalConfig(chartConfig);
+            this.add(chartConfig);
 
         },
         _getStoreConfig: function(){
@@ -694,63 +2754,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 limit: Infinity
             };
         },
-        _getChartConfig: function(){
-            console.log('height', this.height);
-
-            return {
-                chart: {
-                    zoomType: 'xy',
-                    height: this.height,
-                    width: this.width,
-                    spacingTop: 2,
-                    spacingRight: 0,
-                    spacingBottom: 8,
-                    spacingLeft: 0,
-                    alignTicks: false,
-                    animation: true,
-                    type: "area",
-                    //events: {
-                    //    click: clickChartHandler
-                    //}
-                },
-                legend: { enabled: false },
-                title: {
-                    text: ''
-                },
-                xAxis: {
-                    tickmarkPlacement: 'on',
-                    tickInterval: 20,
-                    title: {
-                        text: null
-                    }
-                },
-                yAxis: [{
-                    title: {
-                        text: null
-                    },
-                    min: 0,
-                    labels: { enabled: false }
-                }],
-                plotOptions: {
-                    series: {
-                        animation: true,
-                        marker: {
-                            enabled: false,
-                            states: {
-                                hover: {
-                                    enabled: false
-                                }
-                            }
-                        }
-                    },
-                    area: {
-                        stacking: 'normal'
-                    }
-                }
-            };
-        },
-        _createMinimalConfig: function(){
-            var config = this._createChartConfig();
+        _createMinimalConfig: function(overrides){
+            var config = this._createChartConfig(overrides);
             delete config.chartConfig.xAxis;
             delete config.chartConfig.yAxis;
 
@@ -781,6 +2786,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         _createChartConfig: function(overrides) {
             var clickChartHandler = _.isFunction(this.clickHandler) ? this.clickHandler : Ext.emptyFn;
 
+
             return Ext.Object.merge({
                 xtype: 'rallychart',
                 updateAfterRender: Ext.bind(this._onLoad, this),
@@ -795,6 +2801,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 ],
                 chartConfig: {
                     chart: {
+
+                        //zoomType: 'xy',
                         height: this.height,
                         width: this.width,
                         spacingTop: 2,
@@ -832,22 +2840,18 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     legend: {
                         enabled: true
                     },
-                    title: { text: null },
+                    title: {text: null},
                     xAxis: {
                         tickmarkPlacement: 'on',
                         tickInterval: 1
                     },
                     yAxis: [{
-                        title: { text: null },
+                        title: {text: null},
                         min: 0,
                         labels: {
-                            style: { color: "#005eb8" }
+                            style: {color: "#005eb8"}
                         }
                     }]
-                },
-                chartData: {
-                    categories: [],
-                    series: []
                 }
             }, overrides || {});
         }
@@ -1097,7 +3101,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             {xtype: 'statsbannercollapseexpand', flex: 0}
         ],
 
-        constructor: function() {
+        constructor: function(config) {
             this.callParent(arguments);
         },
 
@@ -1138,6 +3142,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             this.store.on('load', this._checkForLateStories, this);
             this.callParent(arguments);
             this._update();
+
         },
         _checkForLateStories: function(store){
             var lateStories = 0,
@@ -1148,13 +3153,10 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     children = record.get('DirectChildrenCount') || 0;
                 if (children === 0){
                     if (iteration){
-                        console.log('iteration',iteration, iteration.EndDate, targetDate);
                         if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
-                            console.log('iteration late', record.get('FormattedID'))
                             lateStories++;
                         }
                     } else {
-                        console.log('no iteration', record.get('FormattedID'))
                         lateStories++;
                     }
                 }
@@ -1188,6 +3190,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         },
 
         _setExpandedOnChildItems: function() {
+            console.log('_setExpandedOnChildItems', this.items)
             _.each(this.items.getRange(), function(item) {
                 console.log('item',item)
                 item.setExpanded(this.expanded);
@@ -1232,13 +3235,15 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             return true;
         },
 
-        _configureItems: function(items, records) {
+        _configureItems: function(items) {
+            console.log('_configureItems', this.scheduleStates)
             var defaults = {
                 flex: 1,
                 context: this.context,
                 store: this.store,
                 timeboxRecord: this.timeboxRecord,
                 timeboxEndDateField: this.timeboxEndDateField,
+                scheduleStates: this.scheduleStates,
                 listeners: {
                     ready: this._onReady,
                     scope: this
@@ -1804,10 +3809,11 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         _getRenderData: function() {
 
+
             var total = 0,
                 accepted_total = 0
                 byCount = this.byCount,
-                acceptedScheduleStates = ['Accepted'];
+                acceptedScheduleStates = this.scheduleStates.slice(this.scheduleStates.indexOf('Accepted'));
 
             Ext.Array.each(this.store.getRange(), function(r) {
                 console.log('record', r.get('FormattedID'),r.get('_type'),r.get('DirectChildrenCount'))
@@ -2702,20 +4708,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         }
     });
 })();
-(function () {
-    var Ext = window.Ext4 || window.Ext;
-
-    Ext.define("MilestoneTrackingApp.IterationProgressChart", {
-        requires: [
-            "Rally.ui.chart.Chart"
-        ],
-
-        chartComponentConfig: {
-            xtype: "rallychart",
-            suppressClientMetrics: true /* keeps rallychart::lookback query time from displaying in client metrics */
-        }
-    });
-}());
 (function() {
     var Ext = window.Ext4 || window.Ext;
 
@@ -2727,10 +4719,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         alias:'widget.statsbannermilestoneprogress',
         requires: [
             'Rally.ui.carousel.Carousel',
-            //'Rally.apps.releasetracking.statsbanner.iterationprogresscharts.BurndownChart',
             'MilestoneTrackingApp.CumulativeFlowChart',
-            //'MilestoneTrackingApp.MinimalPieChart',
-            //'MilestoneTrackingApp.PieChart',
             'MilestoneTrackingApp.IterationProgressDialog',
             'Ext.state.Manager'
         ],
@@ -2781,37 +4770,20 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     minimalMode: true,
                     timeboxRecord: this.timeboxRecord,
                     clickHandler: boundClickHandler,
+                    scheduleStates: this.scheduleStates,
                     context: this.context,
                     store: this.store
                 }
-                //{
-                //xtype: 'statsbannerburndownchart',
-                //width: 150,
-                //height: 63,
-                //minimalMode: true,
-                //clickHandler: boundClickHandler,
-                //context: this.context,
-                //store: this.store
-                //},
-                //{
-                //xtype: 'statsbannercumulativeflowchart',
-                //width: 150,
-                //height: 63,
-                //minimalMode: true,
-                //clickHandler: boundClickHandler,
-                //context: this.context,
-                //store: this.store
-                //}
             ];
 
-            _.each(this.carouselItems, function(carouselItem) {
-                carouselItem.listeners = {
-                    ready: this._onChartReady,
-                    scope: this
-                };
-            }, this);
-
-            this._pendingChartReadies = this.carouselItems.length;
+            //_.each(this.carouselItems, function(carouselItem) {
+            //    carouselItem.listeners = {
+            //        ready: this._onChartReady,
+            //        scope: this
+            //    };
+            //}, this);
+            //
+            //this._pendingChartReadies = this.carouselItems.length;
         },
 
         expand: function() {
@@ -2831,9 +4803,9 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         },
 
         _onChartClick: function() {
-            var currentIndex = this.carousel.getCurrentItemIndex();
-            Ext.create('Rally.apps.releasetracking.statsbanner.IterationProgressDialog', {
-                startingIndex: currentIndex,
+            //var currentIndex = this.carousel.getCurrentItemIndex();
+            Ext.create('MilestoneTrackingApp.IterationProgressDialog', {
+               // startingIndex: currentIndex,
                 store: this.store,
                 context: this.context
             });
@@ -2891,35 +4863,56 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         },
 
         createCarousel: function() {
-            this.carousel = Ext.create('Rally.ui.carousel.Carousel', {
-                showHeader: false,
-                showDots: true,
-                smallDots: true,
+            var boundClickHandler = Ext.bind(this._onChartClick, this);
+
+            Ext.create('MilestoneTrackingApp.CumulativeFlowChart',{
+                width: 150,
+                height: 60,
+                minimalMode: true,
+                timeboxRecord: this.timeboxRecord,
+                clickHandler: boundClickHandler,
+                scheduleStates: this.scheduleStates,
+                context: this.context,
                 renderTo: this.getEl().down('.stat-carousel'),
-                height: 75,
-                layout: {
-                    type: 'vbox',
-                    align: 'center'
-                },
-                listeners: {
-                    currentitemset: this._updateTitle,
-                    carouselmove: this._updateTitle,
-                    scope: this
-                },
-                carouselItems: this.carouselItems
+                store: this.store
             });
-
-            if (!Ext.isIE8m){
-                // if such next line runs IE8 or < goes boom! WOW!
-                this.carousel.setCurrentItem(this.currentChartDisplayed);
-            }
-
-            this.carousel.on('carouselmove', this._chartShownChanged, this);
+            this._updateTitle('Cumulative Flow');
+            //
+            //this.carousel = Ext.create('Rally.ui.carousel.Carousel', {
+            //    showHeader: false,
+            //    showDots: true,
+            //    smallDots: true,
+            //    renderTo: this.getEl().down('.stat-carousel'),
+            //    height: 75,
+            //    layout: {
+            //        type: 'vbox',
+            //        align: 'center'
+            //    },
+            //    listeners: {
+            //        currentitemset: this._updateTitle,
+            //        carouselmove: this._updateTitle,
+            //        scope: this
+            //    },
+            //    carouselItems: this.carouselItems
+            //});
+            //
+            //if (!Ext.isIE8m){
+            //    // if such next line runs IE8 or < goes boom! WOW!
+            //    this.carousel.setCurrentItem(this.currentChartDisplayed);
+            //}
+            //
+            //this.carousel.on('carouselmove', this._chartShownChanged, this);
         },
 
-        _updateTitle: function(carousel){
+        //_updateTitle: function(carousel){
+        //    _.each(this.getEl().query('.stat-title'), function(el){
+        //        Ext.fly(el).update(carousel.getCurrentItem().displayTitle);
+        //    }, this);
+        //},
+
+        _updateTitle: function(title){
             _.each(this.getEl().query('.stat-title'), function(el){
-                Ext.fly(el).update(carousel.getCurrentItem().displayTitle);
+                Ext.fly(el).update(title);
             }, this);
         },
 
@@ -2941,105 +4934,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         }
     });
 })();
-(function () {
-    var Ext = window.Ext4 || window.Ext;
-
-    Ext.define("MilestoneTrackingApp.IterationProgressMixin", {
-        requires: [
-            "Rally.ui.chart.Chart"
-        ],
-
-        _configureYAxis: function(ticks, axis) {
-
-            var intervalY = (this.chartComponentConfig.chartConfig.yAxis[axis].max - 0) / (ticks - 1);
-            var ticksY = [];
-            for (var i = 0; i < ticks; i++) {
-                ticksY.push(i * intervalY);
-            }
-            this.chartComponentConfig.chartConfig.yAxis[axis].tickPositions = ticksY;
-        },
-
-        _configureYAxisIntervals: function () {
-            var ticks = 5; // not much chart space, limit to 5
-            this._configureYAxis(ticks, 0);
-            if(this.chartType === "burndown") { // cumulative flow only has y axis 0
-                this._configureYAxis(ticks, 1);
-            }
-        },
-
-        _getElementValue: function (element) {
-            if (element.textContent !== undefined) {
-                return element.textContent;
-            }
-            return element.text;
-        },
-
-        _getStringValues: function (elements) {
-            var i;
-            var strings = [];
-            for (i = 0; i < elements.length; i++) {
-                strings.push(this._getElementValue(elements[i]));
-            }
-            return strings;
-        },
-
-        _getNumberValues: function (elements) {
-            var i;
-            var numbers = [];
-            for (i = 0; i < elements.length; i++) {
-                if(this._getElementValue(elements[i])) {
-                    numbers.push(this._getElementValue(elements[i]).split(' ')[0] * 1);
-                } else {
-                    numbers.push(0);
-                }
-
-            }
-            return numbers;
-        },
-
-        _computeMaxYAxisValue: function(series) {
-            var i, j, max = 0.0;
-            // sum each day's values and find the largest sum
-            for(i=0; i < series[0].data.length; i++) {
-                var val = 0.0;
-                for(j=0; j < series.length; j++) {
-                    // if is for insurance, _should_ always be true
-                    if(series[j].data.length === series[0].data.length) {
-                        val += series[j].data[i];
-                    }
-                }
-                if(val > max) {
-                    max = val;
-                }
-            }
-            max = Math.ceil(max / 4) * 4;  // round up to multiple of 4 so we will create 5 integral tick marks
-
-            return (max === 0) ? 4 : max;
-        },
-
-        _createChartDatafromXML: function (xml) {
-            var parseXml;
-
-            if (typeof window.DOMParser !== "undefined") {
-                parseXml = function (xmlStr) {
-                    return ( new window.DOMParser() ).parseFromString(xmlStr, "text/xml");
-                };
-            } else if (typeof window.ActiveXObject !== "undefined" &&
-                new window.ActiveXObject("Microsoft.XMLDOM")) {
-                parseXml = function (xmlStr) {
-                    var xmlDoc = new window.ActiveXObject("Microsoft.XMLDOM");
-                    xmlDoc.async = "false";
-                    xmlDoc.loadXML(xmlStr);
-                    return xmlDoc;
-                };
-            } else {
-                throw new Error("No XML parser found");
-            }
-
-            return parseXml(xml);
-        }
-    });
-}());
 (function(){
     var Ext = window.Ext4 || window.Ext;
 
@@ -3278,8 +5172,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         extend: "Ext.Container",
         requires: [ 'Rally.ui.chart.Chart' ],
         mixins: [
-        //    "MilestoneTrackingApp.IterationProgressMixin",
-          //  "MilestoneTrackingApp.IterationProgressChart"
+            "MilestoneTrackingApp.IterationProgressMixin",
+            "MilestoneTrackingApp.IterationProgressChart"
         ],
         cls: 'rally-iteration-progress-cumulative-flow-chart',
         currentScope: undefined,
@@ -3290,26 +5184,18 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         minimalMode: false,
         initComponent: function() {
             this.callParent(arguments);
-            console.log('initcomponent')
-            this.add({
-                xtype: 'rallychart',
+
+            var chartConfig = {
                 storeType: 'Rally.data.lookback.SnapshotStore',
                 storeConfig: this._getStoreConfig(),
                 calculatorType: 'MilestoneTrackingApp.CFDCalculator',
                 calculatorConfig: {
                     stateFieldName: 'ScheduleState',
-                    stateFieldValues: ['Defined', 'In-Progress', 'Completed', 'Accepted']
-                },
-                chartColors: [  // RGB values obtained from here: http://ux-blog.rallydev.com/?cat=23
-                    "#C0C0C0",  // $grey4
-                    "#FF8200",  // $orange
-                    "#F6A900",  // $gold
-                    "#FAD200",  // $yellow
-                    "#CADDA3",  // $lime
-                    "#1E7C00"
-                ],
-                chartConfig: this._getChartConfig()
-            });
+                    stateFieldValues: this.scheduleStates
+                }
+            };
+            chartConfig = this._createMinimalConfig(chartConfig);
+            this.add(chartConfig);
 
         },
         _getStoreConfig: function(){
@@ -3332,63 +5218,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 limit: Infinity
             };
         },
-        _getChartConfig: function(){
-            console.log('height', this.height);
-
-            return {
-                chart: {
-                    zoomType: 'xy',
-                    height: this.height,
-                    width: this.width,
-                    spacingTop: 2,
-                    spacingRight: 0,
-                    spacingBottom: 8,
-                    spacingLeft: 0,
-                    alignTicks: false,
-                    animation: true,
-                    type: "area",
-                    //events: {
-                    //    click: clickChartHandler
-                    //}
-                },
-                legend: { enabled: false },
-                title: {
-                    text: ''
-                },
-                xAxis: {
-                    tickmarkPlacement: 'on',
-                    tickInterval: 20,
-                    title: {
-                        text: null
-                    }
-                },
-                yAxis: [{
-                    title: {
-                        text: null
-                    },
-                    min: 0,
-                    labels: { enabled: false }
-                }],
-                plotOptions: {
-                    series: {
-                        animation: true,
-                        marker: {
-                            enabled: false,
-                            states: {
-                                hover: {
-                                    enabled: false
-                                }
-                            }
-                        }
-                    },
-                    area: {
-                        stacking: 'normal'
-                    }
-                }
-            };
-        },
-        _createMinimalConfig: function(){
-            var config = this._createChartConfig();
+        _createMinimalConfig: function(overrides){
+            var config = this._createChartConfig(overrides);
             delete config.chartConfig.xAxis;
             delete config.chartConfig.yAxis;
 
@@ -3419,6 +5250,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         _createChartConfig: function(overrides) {
             var clickChartHandler = _.isFunction(this.clickHandler) ? this.clickHandler : Ext.emptyFn;
 
+
             return Ext.Object.merge({
                 xtype: 'rallychart',
                 updateAfterRender: Ext.bind(this._onLoad, this),
@@ -3433,6 +5265,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 ],
                 chartConfig: {
                     chart: {
+
+                        //zoomType: 'xy',
                         height: this.height,
                         width: this.width,
                         spacingTop: 2,
@@ -3470,22 +5304,18 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     legend: {
                         enabled: true
                     },
-                    title: { text: null },
+                    title: {text: null},
                     xAxis: {
                         tickmarkPlacement: 'on',
                         tickInterval: 1
                     },
                     yAxis: [{
-                        title: { text: null },
+                        title: {text: null},
                         min: 0,
                         labels: {
-                            style: { color: "#005eb8" }
+                            style: {color: "#005eb8"}
                         }
                     }]
-                },
-                chartData: {
-                    categories: [],
-                    series: []
                 }
             }, overrides || {});
         }
@@ -3530,11 +5360,17 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 return;
             }
 
-            Rally.technicalservices.Utilities.fetchPortfolioTypes().then({
+            var promises = [
+                Rally.technicalservices.Utilities.fetchScheduleStates(),
+                Rally.technicalservices.Utilities.fetchPortfolioTypes()
+            ];
+
+            Deft.Promise.all(promises).then({
                 scope: this,
-                success: function(records){
-                    this.sModelNames = Ext.Array.from(_.first(records).get('TypePath'));
-                    //this.firstPortfolioItemName = _.first(records).get('Name');
+                success: function(results){
+                    this.logger.log('results',results);
+                    this.sModelNames = Ext.Array.from(_.first(results[1]).get('TypePath'));
+                    this.scheduleStates = results[0];
                     this._addComponents();
                 },
                 failure: function(msg){
@@ -3595,6 +5431,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         },
         _getModelNames: function () {
+            this.logger.log('_getModelNames',this.sModelNames);
             return this.sModelNames.concat(['HierarchicalRequirement','Defect']);
         },
 
@@ -3651,11 +5488,10 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     remoteSort: true,
                     root: {expanded: true},
                     enableHierarchy: true,
-                    expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
+                    //expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
                 };
 
             config.filters = this._getFilters();
-            console.log('config',config);
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(config).then({
                 success: function (store) {
                     return store;
@@ -3673,6 +5509,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 xtype: 'statsbanner',
                 itemId: 'statsBanner',
                 //storeConfig: this._getStoreConfigs(),
+                scheduleStates: this.scheduleStates,
                 context: this.getContext(),
                 timeboxRecord: this._getTimeBoxRecord(),
                 timeboxEndDateField: 'TargetDate',
@@ -3688,11 +5525,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         _addGridBoard: function (gridStore) {
             var context = this.getContext();
-
-            // gridStore.setParentTypes(this.sModelNames);
-           // gridStore.load();
-
-            //this.remove('gridBoard');
 
             this.gridboard = this.down('#grid_box').add({
                 itemId: 'gridBoard',
@@ -3714,10 +5546,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 listeners: {
                     load: this._onLoad,
                     afterrender : function() {
-                        console.log("afterrender",this);
                         this.setWidth(this.getWidth()+1);
-                        console.log("afterrender",this.getWidth());
-                        // console.log(this.getGridOrBoard()); //.getView().refresh(true);
                     },
                     scope: this
                 },
@@ -3960,22 +5789,13 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 stateId = context.getScopedStateId(stateString);
 
             var gridConfig = {
-                xtype: 'rallytreegrid',
                 store: gridStore,
-                //enableRanking: this.getContext().getWorkspace().WorkspaceConfiguration.DragDropRankingEnabled,
-                //enableRanking: false,
-                //enableBulkEdit: false,
-                //enableEditing: false,
                 columnCfgs: ['Name'], //must set this to null to offset default behaviors in the gridboard
                 defaultColumnCfgs: this._getGridColumns(),
-                model: 'UserStory',
-                showSummary: true,
-                summaryColumns: this._getSummaryColumnConfig(),
                 plugins: [],
                 stateId: stateId,
                 stateful: true
             };
-
             return gridConfig;
         },
 

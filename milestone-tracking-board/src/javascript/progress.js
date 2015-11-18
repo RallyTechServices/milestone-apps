@@ -9,10 +9,7 @@
         alias:'widget.statsbannermilestoneprogress',
         requires: [
             'Rally.ui.carousel.Carousel',
-            //'Rally.apps.releasetracking.statsbanner.iterationprogresscharts.BurndownChart',
             'MilestoneTrackingApp.CumulativeFlowChart',
-            //'MilestoneTrackingApp.MinimalPieChart',
-            //'MilestoneTrackingApp.PieChart',
             'MilestoneTrackingApp.IterationProgressDialog',
             'Ext.state.Manager'
         ],
@@ -63,37 +60,20 @@
                     minimalMode: true,
                     timeboxRecord: this.timeboxRecord,
                     clickHandler: boundClickHandler,
+                    scheduleStates: this.scheduleStates,
                     context: this.context,
                     store: this.store
                 }
-                //{
-                //xtype: 'statsbannerburndownchart',
-                //width: 150,
-                //height: 63,
-                //minimalMode: true,
-                //clickHandler: boundClickHandler,
-                //context: this.context,
-                //store: this.store
-                //},
-                //{
-                //xtype: 'statsbannercumulativeflowchart',
-                //width: 150,
-                //height: 63,
-                //minimalMode: true,
-                //clickHandler: boundClickHandler,
-                //context: this.context,
-                //store: this.store
-                //}
             ];
 
-            _.each(this.carouselItems, function(carouselItem) {
-                carouselItem.listeners = {
-                    ready: this._onChartReady,
-                    scope: this
-                };
-            }, this);
-
-            this._pendingChartReadies = this.carouselItems.length;
+            //_.each(this.carouselItems, function(carouselItem) {
+            //    carouselItem.listeners = {
+            //        ready: this._onChartReady,
+            //        scope: this
+            //    };
+            //}, this);
+            //
+            //this._pendingChartReadies = this.carouselItems.length;
         },
 
         expand: function() {
@@ -113,9 +93,9 @@
         },
 
         _onChartClick: function() {
-            var currentIndex = this.carousel.getCurrentItemIndex();
-            Ext.create('Rally.apps.releasetracking.statsbanner.IterationProgressDialog', {
-                startingIndex: currentIndex,
+            //var currentIndex = this.carousel.getCurrentItemIndex();
+            Ext.create('MilestoneTrackingApp.IterationProgressDialog', {
+               // startingIndex: currentIndex,
                 store: this.store,
                 context: this.context
             });
@@ -173,35 +153,56 @@
         },
 
         createCarousel: function() {
-            this.carousel = Ext.create('Rally.ui.carousel.Carousel', {
-                showHeader: false,
-                showDots: true,
-                smallDots: true,
+            var boundClickHandler = Ext.bind(this._onChartClick, this);
+
+            Ext.create('MilestoneTrackingApp.CumulativeFlowChart',{
+                width: 150,
+                height: 60,
+                minimalMode: true,
+                timeboxRecord: this.timeboxRecord,
+                clickHandler: boundClickHandler,
+                scheduleStates: this.scheduleStates,
+                context: this.context,
                 renderTo: this.getEl().down('.stat-carousel'),
-                height: 75,
-                layout: {
-                    type: 'vbox',
-                    align: 'center'
-                },
-                listeners: {
-                    currentitemset: this._updateTitle,
-                    carouselmove: this._updateTitle,
-                    scope: this
-                },
-                carouselItems: this.carouselItems
+                store: this.store
             });
-
-            if (!Ext.isIE8m){
-                // if such next line runs IE8 or < goes boom! WOW!
-                this.carousel.setCurrentItem(this.currentChartDisplayed);
-            }
-
-            this.carousel.on('carouselmove', this._chartShownChanged, this);
+            this._updateTitle('Cumulative Flow');
+            //
+            //this.carousel = Ext.create('Rally.ui.carousel.Carousel', {
+            //    showHeader: false,
+            //    showDots: true,
+            //    smallDots: true,
+            //    renderTo: this.getEl().down('.stat-carousel'),
+            //    height: 75,
+            //    layout: {
+            //        type: 'vbox',
+            //        align: 'center'
+            //    },
+            //    listeners: {
+            //        currentitemset: this._updateTitle,
+            //        carouselmove: this._updateTitle,
+            //        scope: this
+            //    },
+            //    carouselItems: this.carouselItems
+            //});
+            //
+            //if (!Ext.isIE8m){
+            //    // if such next line runs IE8 or < goes boom! WOW!
+            //    this.carousel.setCurrentItem(this.currentChartDisplayed);
+            //}
+            //
+            //this.carousel.on('carouselmove', this._chartShownChanged, this);
         },
 
-        _updateTitle: function(carousel){
+        //_updateTitle: function(carousel){
+        //    _.each(this.getEl().query('.stat-title'), function(el){
+        //        Ext.fly(el).update(carousel.getCurrentItem().displayTitle);
+        //    }, this);
+        //},
+
+        _updateTitle: function(title){
             _.each(this.getEl().query('.stat-title'), function(el){
-                Ext.fly(el).update(carousel.getCurrentItem().displayTitle);
+                Ext.fly(el).update(title);
             }, this);
         },
 

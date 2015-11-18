@@ -6,8 +6,8 @@
         extend: "Ext.Container",
         requires: [ 'Rally.ui.chart.Chart' ],
         mixins: [
-        //    "MilestoneTrackingApp.IterationProgressMixin",
-          //  "MilestoneTrackingApp.IterationProgressChart"
+            "MilestoneTrackingApp.IterationProgressMixin",
+            "MilestoneTrackingApp.IterationProgressChart"
         ],
         cls: 'rally-iteration-progress-cumulative-flow-chart',
         currentScope: undefined,
@@ -18,26 +18,18 @@
         minimalMode: false,
         initComponent: function() {
             this.callParent(arguments);
-            console.log('initcomponent')
-            this.add({
-                xtype: 'rallychart',
+
+            var chartConfig = {
                 storeType: 'Rally.data.lookback.SnapshotStore',
                 storeConfig: this._getStoreConfig(),
                 calculatorType: 'MilestoneTrackingApp.CFDCalculator',
                 calculatorConfig: {
                     stateFieldName: 'ScheduleState',
-                    stateFieldValues: ['Defined', 'In-Progress', 'Completed', 'Accepted']
-                },
-                chartColors: [  // RGB values obtained from here: http://ux-blog.rallydev.com/?cat=23
-                    "#C0C0C0",  // $grey4
-                    "#FF8200",  // $orange
-                    "#F6A900",  // $gold
-                    "#FAD200",  // $yellow
-                    "#CADDA3",  // $lime
-                    "#1E7C00"
-                ],
-                chartConfig: this._getChartConfig()
-            });
+                    stateFieldValues: this.scheduleStates
+                }
+            };
+            chartConfig = this._createMinimalConfig(chartConfig);
+            this.add(chartConfig);
 
         },
         _getStoreConfig: function(){
@@ -60,63 +52,8 @@
                 limit: Infinity
             };
         },
-        _getChartConfig: function(){
-            console.log('height', this.height);
-
-            return {
-                chart: {
-                    zoomType: 'xy',
-                    height: this.height,
-                    width: this.width,
-                    spacingTop: 2,
-                    spacingRight: 0,
-                    spacingBottom: 8,
-                    spacingLeft: 0,
-                    alignTicks: false,
-                    animation: true,
-                    type: "area",
-                    //events: {
-                    //    click: clickChartHandler
-                    //}
-                },
-                legend: { enabled: false },
-                title: {
-                    text: ''
-                },
-                xAxis: {
-                    tickmarkPlacement: 'on',
-                    tickInterval: 20,
-                    title: {
-                        text: null
-                    }
-                },
-                yAxis: [{
-                    title: {
-                        text: null
-                    },
-                    min: 0,
-                    labels: { enabled: false }
-                }],
-                plotOptions: {
-                    series: {
-                        animation: true,
-                        marker: {
-                            enabled: false,
-                            states: {
-                                hover: {
-                                    enabled: false
-                                }
-                            }
-                        }
-                    },
-                    area: {
-                        stacking: 'normal'
-                    }
-                }
-            };
-        },
-        _createMinimalConfig: function(){
-            var config = this._createChartConfig();
+        _createMinimalConfig: function(overrides){
+            var config = this._createChartConfig(overrides);
             delete config.chartConfig.xAxis;
             delete config.chartConfig.yAxis;
 
@@ -147,6 +84,7 @@
         _createChartConfig: function(overrides) {
             var clickChartHandler = _.isFunction(this.clickHandler) ? this.clickHandler : Ext.emptyFn;
 
+
             return Ext.Object.merge({
                 xtype: 'rallychart',
                 updateAfterRender: Ext.bind(this._onLoad, this),
@@ -161,6 +99,8 @@
                 ],
                 chartConfig: {
                     chart: {
+
+                        //zoomType: 'xy',
                         height: this.height,
                         width: this.width,
                         spacingTop: 2,
@@ -198,22 +138,18 @@
                     legend: {
                         enabled: true
                     },
-                    title: { text: null },
+                    title: {text: null},
                     xAxis: {
                         tickmarkPlacement: 'on',
                         tickInterval: 1
                     },
                     yAxis: [{
-                        title: { text: null },
+                        title: {text: null},
                         min: 0,
                         labels: {
-                            style: { color: "#005eb8" }
+                            style: {color: "#005eb8"}
                         }
                     }]
-                },
-                chartData: {
-                    categories: [],
-                    series: []
                 }
             }, overrides || {});
         }
