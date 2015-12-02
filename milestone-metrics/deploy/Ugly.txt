@@ -3,10 +3,10 @@
 <head>
     <title>Milestone Metrics</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Nov 18 2015 13:47:06 GMT-0700 (MST) -->
+    <!--  Build Date: Tue Dec 01 2015 17:04:31 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Nov 18 2015 13:47:06 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Tue Dec 01 2015 17:04:31 GMT-0700 (MST)";
         var CHECKSUM = [%= checksum %];
     </script>
     
@@ -40,6 +40,18 @@
     margin-top: 25px;
     margin-right: 5px;
     cursor: pointer;
+}
+.summary-row {
+    text-transform: uppercase;
+    font-weight: bolder;
+}
+.selector-msg {
+    color: #222222;
+    font-family: ProximaNovaSemiBold,Helvetica,Arial;
+    font-size: 12px;
+    margin-top: 0px;
+    margin-left: 15px;
+    display: inline-block;
 }
     </style>
 

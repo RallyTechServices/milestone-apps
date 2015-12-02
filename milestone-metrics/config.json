@@ -1,7 +1,7 @@
 {
     "name": "Milestone Metrics",
     "className": "milestone-metrics",
-    "server": "https://rally1.rallydev.com",
+    "server": "https://demo-west.rallydev.com",
     "sdk": "2.0",
     "apiKey": "_PUT_APIKEY_HERE_"
 }

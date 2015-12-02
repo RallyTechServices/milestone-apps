@@ -58,7 +58,7 @@
             var cb = this.down('#selection_box').add({
                 xtype: 'rallymilestonecombobox',
                 stateful: true,
-                stateId: this.getContext().getScopedStateId('milestone-cb')
+                stateId: this.getContext().getScopedStateId('milestone-cb'),
             });
             cb.on('change', this._update, this);
 
