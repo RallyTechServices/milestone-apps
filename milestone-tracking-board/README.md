@@ -16,6 +16,8 @@ The data included in the banner calculations include work items that meet the fo
 * Defects directly associated with a User Story that is associated explicitly with the milestone (even though the defect may not be explicitly associated with the milestone)
 * Test Cases directly associated with a User Story this is associated explicitly with the milestone 
 
+Note that User Stories that are decendents of a Feature or Parent User Story explicitly associated with the Milestone are **NOT** included in the banner rollup calculations.  The User story must be EXPLICITLY associated with the Milestone.  
+
 ###Accepted Points
 Sum of all plan estimates from the dataset above (excluding test cases) where the schedule state is Accepted or greater.
 
