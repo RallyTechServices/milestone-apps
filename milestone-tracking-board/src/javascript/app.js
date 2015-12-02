@@ -62,9 +62,9 @@
             });
             cb.on('change', this._update, this);
 
-            var tpl = new Ext.XTemplate('<div class="selector-msg"><tpl if="days &gt;= 0">{days} days remaining until target date',
-                '<tpl elseif="days &lt; 0"><span style="color:red;">{days*(-1)} days past target date</span>',
-                '<tpl else>No target date set for milestone</tpl></div>');
+            var tpl = new Ext.XTemplate('<div class="selector-msg"><tpl if="days &gt;= 0">Target Date: {targetDate} ({days} days remaining)',
+                '<tpl elseif="days &lt; 0">Target Date: {targetDate} <span style="color:red;">({days*(-1)} days past)</span>',
+                '<tpl else><span style="color:red;">No target date set for milestone</span></tpl></div>');
 
             this.down('#selection_box').add({
                 xtype: 'container',
@@ -78,15 +78,53 @@
                 '<div class="latestories">{latestories} Late Stories</div></tpl>')
 
            // var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0">{latestories} Late Stories<tpl else></tpl>')
+            this._delayedTask = Ext.create('Ext.util.DelayedTask', this._showLateStoriesPopover, this);
+
             this.down('#selection_box').add({
                 xtype: 'container',
                 itemId: 'late-stories',
                 flex: 1,
                 style: {
-                    textAlign: 'right'
+                    textAlign: 'right',
+                    cursor: 'pointer'
                 },
-                tpl: lt_tpl
+                tpl: lt_tpl,
+                listeners: {
+                    scope: this,
+                    afterrender: function(cmp){
+                        cmp.getEl().on('click', this._showLateStoriesPopover, this);
+                       // cmp.getEl().on('mouseover', this._onMouseOver, this);
+                       // cmp.getEl().on('mouseout', this._onMouseOut, this);
+                    }
+                }
             });
+        },
+        _onMouseOver: function(event, target){
+            this.logger.log('onMouseOver');
+            this._delayedTask.delay(100, null, null, [target]);
+        },
+        _onMouseOut: function(){
+            this.logger.log('onMouseOut');
+            this._delayedTask.cancel();
+        },
+        _showLateStoriesPopover: function(event, target){
+            this.logger.log('_showLateStoriesPopover',  target);
+
+            if (this.lateStories && this.lateStories.length > 0){
+
+                var html = _.map(this.lateStories, function(s){ return Ext.String.format('<li>{0}: {1} ({2})', s.get('FormattedID'), s.get('Name'), s.get('Iteration') && s.get('Iteration').Name || "Unscheduled")});
+                html = Ext.String.format('<ul>{0}</ul>',html);
+
+                var tt = Ext.create('Rally.ui.tooltip.ToolTip', {
+                    target : target,
+                    html: html,
+                    destroyAfterHide: true
+                });
+                tt.show();
+            }
+
+
+
         },
         _update: function(){
 
@@ -95,8 +133,10 @@
 
             var rec = this._getTimeBoxRecord();
             if (rec){
-                var days = Rally.util.DateTime.getDifference(Rally.util.DateTime.fromIsoString(rec.get('TargetDate')),new Date(), 'day');
-                this.down('#remaining-days').update({days: days});
+                var targetDate = Rally.util.DateTime.fromIsoString(rec.get('TargetDate')),
+                    days = Rally.util.DateTime.getDifference(targetDate,new Date(), 'day'),
+                    formattedTargetDate = Rally.util.DateTime.formatWithDefault(targetDate);
+                this.down('#remaining-days').update({days: days, targetDate: formattedTargetDate});
             }
 
             this._addStatsBanner();
@@ -171,12 +211,18 @@
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(config).then({
                 success: function (store) {
                     return store;
-                }
+                },
+                scope: this
             });
+        },
+        _onStoreLoaded: function(records){
+                    console.log('storeloaded',records);
+
         },
         _updateLateStories: function(latestories){
             this.logger.log('_updateLateStories', latestories);
-            this.down('#late-stories').update({latestories: latestories});
+            this.down('#late-stories').update({latestories: latestories.length});
+            this.lateStories = latestories;
         },
         _addStatsBanner: function() {
 
@@ -201,6 +247,7 @@
 
         _addGridBoard: function (gridStore) {
             var context = this.getContext();
+
 
             this.gridboard = this.down('#grid_box').add({
                 itemId: 'gridBoard',
@@ -519,7 +566,18 @@
             return result;
         },
 
-        _onLoad: function () {
+        _onLoad: function (grid) {
+            this.logger.log('_onLoad');
+            var store = grid.getGridOrBoard().getStore(),
+                re = new RegExp("portfolioitem/","i");
+            store.each(function(record){
+              if (re.test(record.get('_type')) && !record.get('UserStories') && record.get('DirectChildrenCount') > 0){
+                  console.log('yyy', record.get('FormattedID'), record.get('UserStories') ,record);
+                 var store = record.getCollection('UserStories').load();
+
+              }
+            },this);
+            grid.getGridOrBoard().getView().refresh();
             //this._publishContentUpdated();
             this.recordComponentReady();
         },

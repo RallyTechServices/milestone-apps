@@ -80,7 +80,7 @@
 
         },
         _checkForLateStories: function(store){
-            var lateStories = 0,
+            var lateStories = [],
                 targetDate = Rally.util.DateTime.fromIsoString(this.timeboxRecord.get(this.timeboxEndDateField));
 
             _.each(this.store.getRange(), function(record){
@@ -89,15 +89,15 @@
                 if (children === 0){
                     if (iteration){
                         if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
-                            lateStories++;
+                            lateStories.push(record);
                         }
                     } else {
-                        lateStories++;
+                        lateStories.push(record);
                     }
                 }
 
             }, this);
-            if (lateStories > 0){
+            if (lateStories.length > 0){
                 this.fireEvent('latestoriesfound', lateStories);
             }
         },
