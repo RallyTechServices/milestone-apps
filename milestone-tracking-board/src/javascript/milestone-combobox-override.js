@@ -55,6 +55,7 @@
             this.storeConfig.sorters = [{
                 sorterFn: Rally.data.util.Sorter.getDefaultSortFn('Milestone')
             }];
+
             this.callParent(arguments);
         },
 

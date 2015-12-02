@@ -1,7 +1,6 @@
 Ext.define('Rally.technicalservices.Utilities',{
     singleton: true,
     fetchPortfolioTypes: function(){
-        console.log('fetchPortfolioItemTypes')
         var deferred = Ext.create('Deft.Deferred');
 
         var typeStore = Ext.create('Rally.data.wsapi.Store', {

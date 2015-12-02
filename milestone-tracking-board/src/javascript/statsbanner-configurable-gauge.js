@@ -73,11 +73,9 @@
                }];
 
                 if (!Ext.isEmpty(renderData)){
-                    console.log('_getChartConfig', renderData, renderData.chartData);
                     if (renderData.chartData && renderData.chartData instanceof Array){
                         data = renderData.chartData;
-                        console.log('data',data);
-                    } else {
+                     } else {
                         var percentage = renderData.percentage,
                             percentagePlanned = percentage % 100 || 100,
                             color = Rally.util.Colors.cyan_med,

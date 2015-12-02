@@ -27,7 +27,6 @@
                 acceptedScheduleStates = this.scheduleStates.slice(this.scheduleStates.indexOf('Accepted'));
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                console.log('record', r.get('FormattedID'),r.get('_type'),r.get('DirectChildrenCount'))
                 var children = r.get('DirectChildrenCount') || 0;
                 if (children === 0){
                     if (!byCount) {

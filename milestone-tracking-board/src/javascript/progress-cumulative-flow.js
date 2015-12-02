@@ -141,7 +141,13 @@
                     title: {text: null},
                     xAxis: {
                         tickmarkPlacement: 'on',
-                        tickInterval: 1
+                        tickInterval: 1,
+                        labels: {
+                            formatter: function(){
+                                return Rally.util.DateTime.format(new Date(this.value), 'MMM-dd');
+                            },
+                            rotation: 75
+                        }
                     },
                     yAxis: [{
                         title: {text: null},
