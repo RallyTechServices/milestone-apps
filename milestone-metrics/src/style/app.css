@@ -15,3 +15,15 @@
     margin-right: 5px;
     cursor: pointer;
 }
+.summary-row {
+    text-transform: uppercase;
+    font-weight: bolder;
+}
+.selector-msg {
+    color: #222222;
+    font-family: ProximaNovaSemiBold,Helvetica,Arial;
+    font-size: 12px;
+    margin-top: 0px;
+    margin-left: 15px;
+    display: inline-block;
+}
