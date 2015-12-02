@@ -125,9 +125,7 @@
         },
 
         _setExpandedOnChildItems: function() {
-            console.log('_setExpandedOnChildItems', this.items)
             _.each(this.items.getRange(), function(item) {
-                console.log('item',item)
                 item.setExpanded(this.expanded);
             }, this);
         },

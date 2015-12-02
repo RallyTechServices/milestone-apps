@@ -20,7 +20,6 @@
 
         _getRenderData: function() {
 
-            console.log('_getRenderData', this.byCount);
             var total = 0,
                 estimated = 0;
 

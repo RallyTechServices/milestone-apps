@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Dec 02 2015 10:19:51 GMT-0700 (MST) -->
+    <!--  Build Date: Wed Dec 02 2015 11:13:32 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Dec 02 2015 10:19:51 GMT-0700 (MST)";
-        var CHECKSUM = 328072953302;
+        var APP_BUILD_DATE = "Wed Dec 02 2015 11:13:32 GMT-0700 (MST)";
+        var CHECKSUM = 320061211735;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -179,7 +179,6 @@ Ext.define('Rally.technicalservices.Logger',{
 Ext.define('Rally.technicalservices.Utilities',{
     singleton: true,
     fetchPortfolioTypes: function(){
-        console.log('fetchPortfolioItemTypes')
         var deferred = Ext.create('Deft.Deferred');
 
         var typeStore = Ext.create('Rally.data.wsapi.Store', {
@@ -788,6 +787,7 @@ Ext.define('Rally.technicalservices.Utilities',{
             this.storeConfig.sorters = [{
                 sorterFn: Rally.data.util.Sorter.getDefaultSortFn('Milestone')
             }];
+
             this.callParent(arguments);
         },
 
@@ -817,7 +817,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         this.callParent(arguments);
     },
     runCalculation: function (snapshots) {
-        console.log('snapshots',snapshots);
         var calculatorConfig = this._prepareCalculatorConfig(),
             seriesConfig = this._buildSeriesConfig(calculatorConfig);
 
@@ -1334,9 +1333,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         },
 
         _setExpandedOnChildItems: function() {
-            console.log('_setExpandedOnChildItems', this.items)
             _.each(this.items.getRange(), function(item) {
-                console.log('item',item)
                 item.setExpanded(this.expanded);
             }, this);
         },
@@ -1766,11 +1763,9 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                }];
 
                 if (!Ext.isEmpty(renderData)){
-                    console.log('_getChartConfig', renderData, renderData.chartData);
                     if (renderData.chartData && renderData.chartData instanceof Array){
                         data = renderData.chartData;
-                        console.log('data',data);
-                    } else {
+                     } else {
                         var percentage = renderData.percentage,
                             percentagePlanned = percentage % 100 || 100,
                             color = Rally.util.Colors.cyan_med,
@@ -1960,7 +1955,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 acceptedScheduleStates = this.scheduleStates.slice(this.scheduleStates.indexOf('Accepted'));
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                console.log('record', r.get('FormattedID'),r.get('_type'),r.get('DirectChildrenCount'))
                 var children = r.get('DirectChildrenCount') || 0;
                 if (children === 0){
                     if (!byCount) {
@@ -2192,13 +2186,11 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             this.store.load();
         },
         _getRenderData: function() {
-            console.log('_renderData testcasesa', this.store.getRange());
             var total = 0,
                 passed = 0,
                 executed = 0;
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                console.log('testCases', r.get('FormattedID'));
                 if (r.get('LastRun')){
                     executed++;
                     if (r.get('LastVerdict') === "Pass"){
@@ -2311,7 +2303,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         _getRenderData: function() {
 
-            console.log('_getRenderData', this.byCount);
             var total = 0,
                 estimated = 0;
 
@@ -2420,13 +2411,10 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     children = record.get('DirectChildrenCount') || 0;
                 if (children === 0){
                     if (iteration){
-                        console.log('iteration',iteration, iteration.EndDate, targetDate);
-                        if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
-                            console.log('iteration late', record.get('FormattedID'))
+                         if (Rally.util.DateTime.fromIsoString(iteration.EndDate) > targetDate){
                             lateStories++;
                         }
                     } else {
-                        console.log('no iteration', record.get('FormattedID'))
                         lateStories++;
                     }
                 }
@@ -3435,10 +3423,25 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             });
         },
         _addComponents: function(){
+
+            var filters = Ext.create('Rally.data.wsapi.Filter',{
+                property: 'Projects',
+                operator: 'contains',
+                value: this.getContext().getProject()._ref
+            });
+            filters = filters.or({
+                property: 'TargetProject',
+                value: null
+            });
+            this.logger.log('filters', filters.toString());
             var cb = this.down('#selection_box').add({
                 xtype: 'rallymilestonecombobox',
                 stateful: true,
                 stateId: this.getContext().getScopedStateId('milestone-cb'),
+                storeConfig: {
+                    filters: filters,
+                    remoteFilter: true
+                }
             });
             cb.on('change', this._update, this);
 
@@ -3457,9 +3460,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0"><div class="picto icon-warning warning" style="color:#FAD200;font-size:16px;"></div>',
                 '<div class="latestories">{latestories} Late Stories</div></tpl>')
 
-           // var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0">{latestories} Late Stories<tpl else></tpl>')
-            this._delayedTask = Ext.create('Ext.util.DelayedTask', this._showLateStoriesPopover, this);
-
             this.down('#selection_box').add({
                 xtype: 'container',
                 itemId: 'late-stories',
@@ -3473,20 +3473,11 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     scope: this,
                     afterrender: function(cmp){
                         cmp.getEl().on('click', this._showLateStoriesPopover, this);
-                       // cmp.getEl().on('mouseover', this._onMouseOver, this);
-                       // cmp.getEl().on('mouseout', this._onMouseOut, this);
                     }
                 }
             });
         },
-        _onMouseOver: function(event, target){
-            this.logger.log('onMouseOver');
-            this._delayedTask.delay(100, null, null, [target]);
-        },
-        _onMouseOut: function(){
-            this.logger.log('onMouseOut');
-            this._delayedTask.cancel();
-        },
+
         _showLateStoriesPopover: function(event, target){
             this.logger.log('_showLateStoriesPopover',  target);
 
@@ -3594,10 +3585,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 },
                 scope: this
             });
-        },
-        _onStoreLoaded: function(records){
-                    console.log('storeloaded',records);
-
         },
         _updateLateStories: function(latestories){
             this.logger.log('_updateLateStories', latestories);
@@ -3950,16 +3937,13 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             this.logger.log('_onLoad');
             var store = grid.getGridOrBoard().getStore(),
                 re = new RegExp("portfolioitem/","i");
+
             store.each(function(record){
               if (re.test(record.get('_type')) && !record.get('UserStories') && record.get('DirectChildrenCount') > 0){
-                  console.log('yyy', record.get('FormattedID'), record.get('UserStories') ,record);
-                 var store = record.getCollection('UserStories').load();
-
+                 //todo: Fix this!!!!
+                 this.logger.log('_onLoad Feature with missing children', record.get('FormattedID'), record);
               }
             },this);
-            grid.getGridOrBoard().getView().refresh();
-            //this._publishContentUpdated();
-            this.recordComponentReady();
         },
 
         _onBoardFilter: function () {

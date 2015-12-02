@@ -46,6 +46,15 @@ Ext.define("milestone-metrics", {
     _addSelectors: function(){
         this.down('#selection_box').removeAll();
 
+        var filters = Ext.create('Rally.data.wsapi.Filter',{
+            property: 'Projects',
+            operator: 'contains',
+            value: this.getContext().getProject()._ref
+        });
+        filters = filters.or({
+            property: 'TargetProject',
+            value: null
+        });
 
         this.milestoneSelector = this.down('#selection_box').add({
             xtype: 'rallymilestonecombobox',
@@ -54,7 +63,11 @@ Ext.define("milestone-metrics", {
             width: 200,
             fieldLabel: 'Milestone',
             labelAlign: 'right',
-            context: this.getContext()
+            context: this.getContext(),
+            storeConfig: {
+                filters: filters,
+                remoteFilter: true
+            }
         });
 
         this.milestoneInformation = this.down('#selection_box').add({

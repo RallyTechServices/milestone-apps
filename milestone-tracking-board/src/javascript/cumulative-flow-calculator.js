@@ -10,7 +10,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         this.callParent(arguments);
     },
     runCalculation: function (snapshots) {
-        console.log('snapshots',snapshots);
         var calculatorConfig = this._prepareCalculatorConfig(),
             seriesConfig = this._buildSeriesConfig(calculatorConfig);
 

@@ -55,10 +55,25 @@
             });
         },
         _addComponents: function(){
+
+            var filters = Ext.create('Rally.data.wsapi.Filter',{
+                property: 'Projects',
+                operator: 'contains',
+                value: this.getContext().getProject()._ref
+            });
+            filters = filters.or({
+                property: 'TargetProject',
+                value: null
+            });
+            this.logger.log('filters', filters.toString());
             var cb = this.down('#selection_box').add({
                 xtype: 'rallymilestonecombobox',
                 stateful: true,
                 stateId: this.getContext().getScopedStateId('milestone-cb'),
+                storeConfig: {
+                    filters: filters,
+                    remoteFilter: true
+                }
             });
             cb.on('change', this._update, this);
 
@@ -77,9 +92,6 @@
             var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0"><div class="picto icon-warning warning" style="color:#FAD200;font-size:16px;"></div>',
                 '<div class="latestories">{latestories} Late Stories</div></tpl>')
 
-           // var lt_tpl = new Ext.XTemplate('<tpl if="latestories &gt; 0">{latestories} Late Stories<tpl else></tpl>')
-            this._delayedTask = Ext.create('Ext.util.DelayedTask', this._showLateStoriesPopover, this);
-
             this.down('#selection_box').add({
                 xtype: 'container',
                 itemId: 'late-stories',
@@ -93,20 +105,11 @@
                     scope: this,
                     afterrender: function(cmp){
                         cmp.getEl().on('click', this._showLateStoriesPopover, this);
-                       // cmp.getEl().on('mouseover', this._onMouseOver, this);
-                       // cmp.getEl().on('mouseout', this._onMouseOut, this);
                     }
                 }
             });
         },
-        _onMouseOver: function(event, target){
-            this.logger.log('onMouseOver');
-            this._delayedTask.delay(100, null, null, [target]);
-        },
-        _onMouseOut: function(){
-            this.logger.log('onMouseOut');
-            this._delayedTask.cancel();
-        },
+
         _showLateStoriesPopover: function(event, target){
             this.logger.log('_showLateStoriesPopover',  target);
 
@@ -214,10 +217,6 @@
                 },
                 scope: this
             });
-        },
-        _onStoreLoaded: function(records){
-                    console.log('storeloaded',records);
-
         },
         _updateLateStories: function(latestories){
             this.logger.log('_updateLateStories', latestories);
@@ -570,16 +569,13 @@
             this.logger.log('_onLoad');
             var store = grid.getGridOrBoard().getStore(),
                 re = new RegExp("portfolioitem/","i");
+
             store.each(function(record){
               if (re.test(record.get('_type')) && !record.get('UserStories') && record.get('DirectChildrenCount') > 0){
-                  console.log('yyy', record.get('FormattedID'), record.get('UserStories') ,record);
-                 var store = record.getCollection('UserStories').load();
-
+                 //todo: Fix this!!!!
+                 this.logger.log('_onLoad Feature with missing children', record.get('FormattedID'), record);
               }
             },this);
-            grid.getGridOrBoard().getView().refresh();
-            //this._publishContentUpdated();
-            this.recordComponentReady();
         },
 
         _onBoardFilter: function () {
