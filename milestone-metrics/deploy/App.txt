@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Metrics</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Dec 02 2015 11:35:19 GMT-0700 (MST) -->
+    <!--  Build Date: Sun Dec 13 2015 20:59:48 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Dec 02 2015 11:35:19 GMT-0700 (MST)";
-        var CHECKSUM = 28393074873;
+        var APP_BUILD_DATE = "Sun Dec 13 2015 20:59:48 GMT-0700 (MST)";
+        var CHECKSUM = 28413957450;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -579,15 +579,18 @@ Ext.define("milestone-metrics", {
                     val = val.Iteration && val.Iteration.ObjectID || null;
                 }
             }
-            this.logger.log('_aggregate', val, r);
-            if (val === null){
-                val = "Unscheduled";
+            if (val){
+                this.logger.log('_aggregate', val, r);
+                if (val === null){
+                    val = "Unscheduled";
+                }
+                if (!hash[val]){
+                    hash[val] = [];
+                }
+                hash[val].push(r);
+
             }
-            if (!hash[val]){
-                hash[val] = [];
-            }
-            hash[val].push(r);
-        }, this);
+                    }, this);
         return hash;
     },
     getOptions: function() {

@@ -3,10 +3,10 @@
 <head>
     <title>Milestone Metrics</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Dec 02 2015 11:35:19 GMT-0700 (MST) -->
+    <!--  Build Date: Sun Dec 13 2015 20:59:48 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Dec 02 2015 11:35:19 GMT-0700 (MST)";
+        var APP_BUILD_DATE = "Sun Dec 13 2015 20:59:48 GMT-0700 (MST)";
         var CHECKSUM = [%= checksum %];
     </script>
     
