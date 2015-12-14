@@ -401,15 +401,18 @@ Ext.define("milestone-metrics", {
                     val = val.Iteration && val.Iteration.ObjectID || null;
                 }
             }
-            this.logger.log('_aggregate', val, r);
-            if (val === null){
-                val = "Unscheduled";
+            if (val){
+                this.logger.log('_aggregate', val, r);
+                if (val === null){
+                    val = "Unscheduled";
+                }
+                if (!hash[val]){
+                    hash[val] = [];
+                }
+                hash[val].push(r);
+
             }
-            if (!hash[val]){
-                hash[val] = [];
-            }
-            hash[val].push(r);
-        }, this);
+                    }, this);
         return hash;
     },
     getOptions: function() {
