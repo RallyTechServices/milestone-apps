@@ -204,7 +204,6 @@
         },
 
         _configureItems: function(items) {
-            console.log('_configureItems', this.scheduleStates)
             var defaults = {
                 flex: 1,
                 context: this.context,
@@ -212,6 +211,8 @@
                 timeboxRecord: this.timeboxRecord,
                 timeboxEndDateField: this.timeboxEndDateField,
                 scheduleStates: this.scheduleStates,
+                closedDefectStates: this.closedDefectStates,
+                cancelledDefectStates: this.cancelledDefectStates,
                 listeners: {
                     ready: this._onReady,
                     scope: this

@@ -14,7 +14,9 @@
 
         config: {
             defaultSettings: {
-                ignoreProjectScoping: true
+                ignoreProjectScoping: true,
+                closedDefectStates: ['Closed'],
+                cancelledDefectStates: []
             }
         },
         items: [
@@ -165,17 +167,40 @@
             });
 
             fields.push({
-                name: 'showTestCaseMetrics',
-                xtype: 'rallycheckboxfield',
-                label: 'Show Test Case Metrics'
+                name: 'closedDefectStates',
+                xtype: 'rallyfieldvaluecombobox',
+                width: 400,
+                labelWidth: 150,
+                labelAlign: 'right',
+                multiSelect: true,
+                fieldLabel: 'Inactive Defect States',
+                emptyText : "Select Inactive States...",
+                model: 'defect',
+                field: 'State',
+                listConfig : {
+                    getInnerTpl : function() {
+                        return '<div class="x-combo-list-item"><img src="" class="chkCombo-default-icon chkCombo" /> {displayName} </div>';
+                    }
+                }
             });
 
             fields.push({
-                name: 'showDefectMetrics',
-                xtype: 'rallycheckboxfield',
-                label: 'Show Defect Metrics'
+                name: 'cancelledDefectStates',
+                xtype: 'rallyfieldvaluecombobox',
+                width: 400,
+                labelWidth: 150,
+                labelAlign: 'right',
+                multiSelect: true,
+                fieldLabel: 'Cancelled Defect States',
+                emptyText : "Select Cancelled States...",
+                model: 'defect',
+                field: 'State',
+                listConfig : {
+                    getInnerTpl : function() {
+                        return '<div class="x-combo-list-item"><img src="" class="chkCombo-default-icon chkCombo" /> {displayName} </div>';
+                    }
+                }
             });
-
             return fields;
         },
         _getFilters: function(){
@@ -237,6 +262,8 @@
                 timeboxRecord: this._getTimeBoxRecord(),
                 timeboxEndDateField: 'TargetDate',
                 filters: this._getFilters(),
+                closedDefectStates: this.getSetting('closedDefectStates'),
+                cancelledDefectStates: this.getSetting('cancelledDefectStates'),
                 margin: '0 0 5px 0',
                 listeners: {
                     resize: this._resizeGridBoardToFillSpace,
@@ -607,6 +634,12 @@
 
         isExternal: function(){
             return typeof(this.getAppId()) == 'undefined';
+        },
+        onSettingsUpdate: function(settings){
+            this.down('#selection_box').removeAll();
+            this.down('#banner_box').removeAll();
+            this.down('#grid_box').removeAll();
+            this._addComponents();
         }
     });
 })();

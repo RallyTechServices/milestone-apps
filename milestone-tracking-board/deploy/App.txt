@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Dec 14 2015 22:59:24 GMT-0600 (CST) -->
+    <!--  Build Date: Tue Dec 15 2015 08:35:37 GMT-0600 (CST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Dec 14 2015 22:59:24 GMT-0600 (CST)";
-        var CHECKSUM = 328533560284;
+        var APP_BUILD_DATE = "Tue Dec 15 2015 08:35:37 GMT-0600 (CST)";
+        var CHECKSUM = 337255534577;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1411,7 +1411,6 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         },
 
         _configureItems: function(items) {
-            console.log('_configureItems', this.scheduleStates)
             var defaults = {
                 flex: 1,
                 context: this.context,
@@ -1419,6 +1418,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 timeboxRecord: this.timeboxRecord,
                 timeboxEndDateField: this.timeboxEndDateField,
                 scheduleStates: this.scheduleStates,
+                closedDefectStates: this.closedDefectStates,
+                cancelledDefectStates: this.cancelledDefectStates,
                 listeners: {
                     ready: this._onReady,
                     scope: this
@@ -1742,7 +1743,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         tpl: [
             '<div class="expanded-widget">',
-                '<div class="stat-title">{title}&nbsp;<span class="icon-help"></span></div>',
+                '<div class="stat-title"  data-qtip="{tooltip}">{title}&nbsp;<span class="icon-help"></span></div>',
                 '<div class="stat-metric">',
                     '<div class="metric-chart"></div>',
                     '<div class="metric-chart-text percent-offset">',
@@ -1771,7 +1772,14 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         _tzOffsetPromises: {},
 
+        getTooltip: function(values){
+            if (values.tooltip){
+                return values.tooltip;
+            }
+            return '';
+        },
         initComponent: function() {
+            Ext.QuickTips.init();
             this.mon(this.store, 'datachanged', this.onDataChanged, this);
             this.callParent(arguments);
         },
@@ -1862,7 +1870,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                             {
                                 name: '',
                                 y: 100,
-                                color: Rally.util.Colors.grey1
+                                color: Rally.util.Colors.grey1,
+                                pct: "N/A"
                             }
                         ]
                     }]
@@ -2044,7 +2053,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
             var total = 0,
                 active = 0,
-                closedStates = ['Closed'];
+                closedStates = this.closedDefectStates;
 
             Ext.Array.each(this.store.getRange(), function(r) {
                 if (r.get('_type').toLowerCase() === 'defect'){
@@ -2118,7 +2127,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
             var total = 0,
                 cancelled = 0,
-                cancelledStates = ['Cancelled','Rejected'];
+                cancelledStates = this.cancelledDefectStates;
 
             var executedTestCases = this.testCaseStore.getTotalCount() || 0;
 
@@ -3380,7 +3389,9 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         config: {
             defaultSettings: {
-                ignoreProjectScoping: true
+                ignoreProjectScoping: true,
+                closedDefectStates: ['Closed'],
+                cancelledDefectStates: []
             }
         },
         items: [
@@ -3531,17 +3542,40 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
             });
 
             fields.push({
-                name: 'showTestCaseMetrics',
-                xtype: 'rallycheckboxfield',
-                label: 'Show Test Case Metrics'
+                name: 'closedDefectStates',
+                xtype: 'rallyfieldvaluecombobox',
+                width: 400,
+                labelWidth: 150,
+                labelAlign: 'right',
+                multiSelect: true,
+                fieldLabel: 'Inactive Defect States',
+                emptyText : "Select Inactive States...",
+                model: 'defect',
+                field: 'State',
+                listConfig : {
+                    getInnerTpl : function() {
+                        return '<div class="x-combo-list-item"><img src="" class="chkCombo-default-icon chkCombo" /> {displayName} </div>';
+                    }
+                }
             });
 
             fields.push({
-                name: 'showDefectMetrics',
-                xtype: 'rallycheckboxfield',
-                label: 'Show Defect Metrics'
+                name: 'cancelledDefectStates',
+                xtype: 'rallyfieldvaluecombobox',
+                width: 400,
+                labelWidth: 150,
+                labelAlign: 'right',
+                multiSelect: true,
+                fieldLabel: 'Cancelled Defect States',
+                emptyText : "Select Cancelled States...",
+                model: 'defect',
+                field: 'State',
+                listConfig : {
+                    getInnerTpl : function() {
+                        return '<div class="x-combo-list-item"><img src="" class="chkCombo-default-icon chkCombo" /> {displayName} </div>';
+                    }
+                }
             });
-
             return fields;
         },
         _getFilters: function(){
@@ -3603,6 +3637,8 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                 timeboxRecord: this._getTimeBoxRecord(),
                 timeboxEndDateField: 'TargetDate',
                 filters: this._getFilters(),
+                closedDefectStates: this.getSetting('closedDefectStates'),
+                cancelledDefectStates: this.getSetting('cancelledDefectStates'),
                 margin: '0 0 5px 0',
                 listeners: {
                     resize: this._resizeGridBoardToFillSpace,
@@ -3973,6 +4009,12 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         isExternal: function(){
             return typeof(this.getAppId()) == 'undefined';
+        },
+        onSettingsUpdate: function(settings){
+            this.down('#selection_box').removeAll();
+            this.down('#banner_box').removeAll();
+            this.down('#grid_box').removeAll();
+            this._addComponents();
         }
     });
 })();
