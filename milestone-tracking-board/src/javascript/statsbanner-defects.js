@@ -21,7 +21,7 @@
 
             var total = 0,
                 active = 0,
-                closedStates = ['Closed'];
+                closedStates = this.closedDefectStates;
 
             Ext.Array.each(this.store.getRange(), function(r) {
                 if (r.get('_type').toLowerCase() === 'defect'){
@@ -40,7 +40,8 @@
                 calculatedUnits: active,
                 totalUnits: total,
                 unit: this.unitLabel,
-                title: this.title
+                title: this.title,
+                tooltip: this.tooltip
             };
             return data;
 

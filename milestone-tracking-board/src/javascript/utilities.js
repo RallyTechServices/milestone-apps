@@ -31,7 +31,6 @@ Ext.define('Rally.technicalservices.Utilities',{
                 } else {
                     deferred.reject("Error loading Portfolio Item Types:  " + operation.error.errors.join(','));
                 }
-
             }
         });
         return deferred;

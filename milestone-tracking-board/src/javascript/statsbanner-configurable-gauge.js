@@ -15,9 +15,10 @@
             'Rally.util.Colors'
         ],
 
+
         tpl: [
             '<div class="expanded-widget">',
-                '<div class="stat-title">{title}</div>',
+                '<div class="stat-title"  data-qtip="{tooltip}">{title}&nbsp;<span class="icon-help"></span></div>',
                 '<div class="stat-metric">',
                     '<div class="metric-chart"></div>',
                     '<div class="metric-chart-text percent-offset">',
@@ -46,7 +47,14 @@
 
         _tzOffsetPromises: {},
 
+        getTooltip: function(values){
+            if (values.tooltip){
+                return values.tooltip;
+            }
+            return '';
+        },
         initComponent: function() {
+            Ext.QuickTips.init();
             this.mon(this.store, 'datachanged', this.onDataChanged, this);
             this.callParent(arguments);
         },
@@ -137,7 +145,8 @@
                             {
                                 name: '',
                                 y: 100,
-                                color: Rally.util.Colors.grey1
+                                color: Rally.util.Colors.grey1,
+                                pct: "N/A"
                             }
                         ]
                     }]
