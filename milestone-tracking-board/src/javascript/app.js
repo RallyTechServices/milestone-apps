@@ -118,6 +118,8 @@
                 var html = _.map(this.lateStories, function(s){ return Ext.String.format('<li>{0}: {1} ({2})', s.get('FormattedID'), s.get('Name'), s.get('Iteration') && s.get('Iteration').Name || "Unscheduled")});
                 html = Ext.String.format('<ul>{0}</ul>',html);
 
+                html += "<br/><i>Late Stories are work items that are scheduled into an iteration that ends after the Milestone target date or items that are not scheduled into an iteration.</i>" ;
+
                 var tt = Ext.create('Rally.ui.tooltip.ToolTip', {
                     target : target,
                     html: html,

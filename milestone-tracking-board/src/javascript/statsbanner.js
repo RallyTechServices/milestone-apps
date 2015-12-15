@@ -27,13 +27,48 @@
         },
 
         items: [
-            {xtype: 'statsbanneraccepted', byCount: false,  title: 'Accepted Points', unitLabel: "Points"},
-            {xtype: 'statsbannerestimatedstories', title: "Estimated Work Items", unitLabel: "Work Items"},
-            {xtype: 'statsbanneraccepted', byCount: true,  title: 'Accepted Count', unitLabel: "work items"},
-            {xtype: 'statsbannerdefects', title: 'Active Defects', unitLabel: ' Defects'},
-            {xtype: 'statsbannertestcases', title: 'Test Cases Passed', unitLabel: 'executed'},
-            {xtype: 'statsbannermilestoneprogress', flex: 2},
-            {xtype: 'statsbannercollapseexpand', flex: 0}
+            {
+                xtype: 'statsbanneraccepted',
+                byCount: false,
+                title: 'Accepted Points',
+                unitLabel: "Points",
+                flex: 2,
+                tooltip: "The summed Plan Estimates of user stories and defects explicitly associated with the Milestone and defects associated with a User Story that is explicitly associated with the Milestone that are in the Accepted (or higher) ScheduleState."
+            },{
+                xtype: 'statsbannerestimatedstories',
+                title: "Estimated Work Items",
+                unitLabel: "Work Items",
+                flex: 2,
+                tooltip: "The number of user stories and defects explicitly associated with the Milestone or defects associated with a User Story that is explicitly associated with the Milestone that have a plan estimate of 0 or higher."
+            },{
+                xtype: 'statsbanneraccepted',
+                byCount: true,
+                title: 'Accepted Count',
+                unitLabel: "work items",
+                flex: 2,
+                tooltip: "The number of user stories and defects explicitly associated with the Milestone and defects associated with a User Story that is explicitly associated with the Milestone that are in the Accepted (or higher) ScheduleState."
+            },{
+                xtype: 'statsbannerdefects',
+                title: 'Active Defects',
+                unitLabel: ' Defects',
+                flex: 2,
+                tooltip: "The number of defects explicitly associated with the Milestone or associated with a User Story that is explicitly associated with the Milestone that are not in a Closed State."
+            },{
+                xtype: 'statsbannertestcases',
+                title: 'Test Cases Passed',
+                unitLabel: 'executed',
+                flex: 2,
+                tooltip: "The number of test cases associated with a User Story or Defect associated with the milestone.  Passed Test cases are the number of those test cases where the Last Verdict = Passed.  Executed test cases are the number of those test cases that have been run, but where the Last Verdict is not Passed."
+            },{
+                xtype: 'statsbannerdefectdensity',
+                title: 'Defect Density',
+                unitLabel: 'Defects/Test Cases',
+                flex: 2,
+                tooltip: "Defect Density =( (Total Number of Defects – Cancelled defects – Rejected Defects) / Total Number of Test Cases Executed)"
+            },{
+                xtype: 'statsbannermilestoneprogress',
+                flex: 2
+            },{xtype: 'statsbannercollapseexpand', flex: 0}
         ],
 
         constructor: function(config) {

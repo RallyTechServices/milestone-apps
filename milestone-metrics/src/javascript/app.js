@@ -84,7 +84,6 @@ Ext.define("milestone-metrics", {
             width: 300,
             value: ''
         });
-
         this.milestoneSelector.on('change', this._update, this);
         this.iterationFilter.on('change', this._filterIteration, this);
 

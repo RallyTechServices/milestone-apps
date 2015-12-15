@@ -15,9 +15,10 @@
             'Rally.util.Colors'
         ],
 
+
         tpl: [
             '<div class="expanded-widget">',
-                '<div class="stat-title">{title}</div>',
+                '<div class="stat-title">{title}&nbsp;<span class="icon-help"></span></div>',
                 '<div class="stat-metric">',
                     '<div class="metric-chart"></div>',
                     '<div class="metric-chart-text percent-offset">',

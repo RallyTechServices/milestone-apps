@@ -1,5 +1,31 @@
 .app {
 }
+.icon-help {
+    color: #c0c0c0;
+    cursor: pointer;
+}
+a.tooltip {
+    position: relative;
+    text-decoration: none;
+    color: #c0c0c0;
+}
+
+a.tooltip span{
+    display: none;
+}
+
+a.tooltip:hover {
+    position: absolute;
+    top: -20px;
+    left: 0px;
+    display: block;
+    width: 250px;
+    color: white;
+    background-color: black;
+    border: 1px solid black;
+    padding: 5px;
+}
+
 .tsinfolink {
     position:absolute;
     right:0px;

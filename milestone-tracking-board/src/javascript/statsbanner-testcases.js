@@ -73,7 +73,8 @@
                 percentage: pct,
                 secondaryCalculatedUnits: passed,
                 secondaryTotalUnits: executed,
-                secondaryUnit: "passed"
+                secondaryUnit: "passed",
+                tooltip: this.tooltip
             };
             return data;
 

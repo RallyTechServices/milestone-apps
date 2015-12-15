@@ -40,7 +40,8 @@
                 calculatedUnits: active,
                 totalUnits: total,
                 unit: this.unitLabel,
-                title: this.title
+                title: this.title,
+                tooltip: this.tooltip
             };
             return data;
 
