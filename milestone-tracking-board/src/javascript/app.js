@@ -380,6 +380,23 @@
                 }
             });
 
+            plugins.push({
+                ptype: 'rallygridboardactionsmenu',
+                menuItems: [
+                    {
+                        text: 'Export...',
+                        handler: function() {
+                            window.location = Rally.ui.grid.GridCsvExport.buildCsvExportUrl(
+                                this.down('rallygridboard').getGridOrBoard());
+                        },
+                        scope: this
+                    }
+                ],
+                buttonConfig: {
+                    iconCls: 'icon-export'
+                }
+            });
+
             return plugins;
         },
 
