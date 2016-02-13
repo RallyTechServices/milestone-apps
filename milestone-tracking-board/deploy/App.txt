@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Dec 28 2015 07:21:42 GMT-0700 (MST) -->
+    <!--  Build Date: Sat Feb 13 2016 16:25:55 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Dec 28 2015 07:21:42 GMT-0700 (MST)";
-        var CHECKSUM = 339347399676;
+        var APP_BUILD_DATE = "Sat Feb 13 2016 16:25:55 GMT-0700 (MST)";
+        var CHECKSUM = 371929215586;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1205,6 +1205,188 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         }
     });
 })();
+Ext.override (Rally.data.wsapi.TreeStore,{
+    _decorateModels: function() {
+        var models = this.model;
+
+        if (_.isFunction(models.getArtifactComponentModels)) {
+            models = models.getArtifactComponentModels();
+        }
+
+        _.each(Ext.Array.from(models), function(model) { var m = Rally.ui.grid.data.NodeInterface.decorate(model);  console.log('m',m);}, Rally.ui.grid.data.NodeInterface);
+    }
+});
+
+Ext.override(Rally.ui.grid.data.NodeInterface, {
+    extend: 'Ext.data.NodeInterface',
+
+    statics: Ext.apply(Ext.data.NodeInterface.prototype.self, {
+
+        /**
+         * @private
+         * @property
+         */
+        noLayoutFields: /^(expanded|loaded|loading|leaf|leafCount)$/,
+
+        getPrototypeBody: function() {
+            var protoBody = origGetPrototypeBody(),
+                originalDestroy = protoBody.destroy,
+                originalReplaceChild = protoBody.replaceChild,
+                originalOnChildNodesAvailable = protoBody.onChildNodesAvailable;
+
+            return Ext.apply(protoBody, {
+                save: function (options) {
+                    options = options || {};
+                    options.params = options.params || {};
+                    options.params.fetch = options.params.fetch || true;
+
+                    var store = this.store && this.store.treeStore || this.store;
+                    if (store && _.isFunction(store.getParentFetch) && _.isFunction(store.getChildFetch)) {
+                        var fetchOptions = {
+                            node: this,
+                            fetch: options.params.fetch
+                        };
+                        options.params.fetch = this.getDepth() === 1 ?
+                            store.getParentFetch(fetchOptions) : store.getChildFetch(fetchOptions);
+                    }
+
+                    return this.self.superclass.save.apply(this, [options]);
+                },
+
+                set: function (name, value) {
+                    var isInTree = Rally.ui.grid.data.NodeInterface.noLayoutFields.test(name) &&  this.store && this.store.ownerTree,
+                        tree = this.store && this.store.ownerTree,
+                        ret;
+
+                    if (isInTree) {
+                        tree.suspendLayouts();
+                    }
+
+                    ret = this.callParent(arguments);
+
+                    if (isInTree) {
+                        tree.resumeLayouts();
+                    }
+
+                    return ret;
+                },
+
+                destroy: function(silent) {
+                    if (this.parentNode) {
+                        this.parentNode.decrementLeafCount();
+                    }
+                    this._removeChildren();
+
+                    return originalDestroy.apply(this, [silent]);
+                },
+
+                replaceChild: function(newChild, oldChild) {
+                    oldChild.replacedByNode = newChild;
+                    return originalReplaceChild.apply(this, [newChild, oldChild]);
+                },
+
+                onChildNodesAvailable: function(records, recursive, callback, scope) {
+                    if (!this._isVisible()) {
+                        // childNodes came back after expand,
+                        // but user has scrolled and this node (the parent) has moved out of the view.
+                        // cancel expand
+                        var view = this._getView();
+                        if (view) {
+                            view.fireEvent('afternonvisibleitemexpand', this);
+                            return;
+                        }
+                    }
+
+                    return originalOnChildNodesAvailable.apply(this, arguments);
+                },
+
+                updateCollectionCount: function(collectionName, count) {
+                    var collection = this.get(collectionName);
+
+                    if (collection) {
+                        collection.Count = count;
+                    }
+
+                    this.set('dirtyCollection', true);
+                },
+
+                incrementLeafCount: function() {
+                    this.set('leafCount', (this.get('leafCount') || 0) + 1);
+                    this.set('leaf', false);
+                },
+
+                decrementLeafCount: function() {
+                    this.set('leafCount', (this.get('leafCount') || 1) - 1);
+
+                    if (this.get('leafCount') > 1) {
+                        this.set('leaf', true);
+                    }
+                },
+
+                resetLeafCount: function(enableHierarchy, expandedCollectionNames) {
+                    if (enableHierarchy) {
+                        var leafCount = this._getLeafCount(expandedCollectionNames);
+                        this.set('leaf', leafCount < 1);
+                        this.set('leafCount', leafCount);
+                    } else {
+                        this.set('leaf', true);
+                        this.set('leafCount', 0);
+                    }
+                },
+
+                _isVisible: function() {
+                    var store = this.store;
+
+                    if (store && _.isFunction(store.isRootNode)) {
+                        return store.isRootNode(this) || this._getViewNode();
+                    }
+
+                    return true;
+                },
+
+                _getView: function() {
+                    var grid = this.store && this.store.ownerTree;
+
+                    return grid && grid.getView();
+                },
+
+                _getViewNode: function() {
+                    var view = this._getView();
+
+                    return view && view.getNode(this);
+                },
+
+                _getLeafCount: function(expandedCollectionNames) {
+                    var typePath = this.get('_type').toLowerCase(),
+                        collectionNames = Ext.Array.from(expandedCollectionNames[typePath] || []);
+                    console.log('_getLeafCount', typePath, expandedCollectionNames);
+                    var count =  _.reduce(collectionNames, function(accumulator, collectionName) {
+                        var collectionVal = this.get(collectionName);
+                        if (collectionVal && collectionVal.Count) {
+                            accumulator += collectionVal.Count;
+                        }
+
+                        return accumulator;
+                    }, 0, this);
+
+                    if (count === 0 && this.get('DirectChildrenCount') > 0){
+                        return this.get('DirectChildrenCount');
+                    }
+                    return count;
+                },
+
+                _removeChildren: function() {
+                    this.suspendEvents(false);
+                    _.each(_.clone(this.childNodes), function(node) {
+                        node.parentNode.decrementLeafCount();
+                        node.parentNode.removeChild(node, false);
+                    });
+                    this.resumeEvents();
+                }
+            });
+        }
+    })
+});
 (function() {
     var Ext = window.Ext4 || window.Ext;
 
@@ -3612,7 +3794,7 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     //expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
                 };
 
-            config.filters = this._getFilters();
+            //config.filters = this._getFilters();
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(config).then({
                 success: function (store) {
                     return store;

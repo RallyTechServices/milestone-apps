@@ -237,7 +237,7 @@
                     //expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
                 };
 
-            config.filters = this._getFilters();
+            //config.filters = this._getFilters();
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(config).then({
                 success: function (store) {
                     return store;
