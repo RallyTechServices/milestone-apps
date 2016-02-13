@@ -61,7 +61,7 @@
 //        Defect Density =( (Total Number of Defects – Cancelled defects – Rejected Defects) / Total Number of Test Cases Executed))
             var pct = executedTestCases > 0 ? (total - cancelled)/executedTestCases * 100 : 0;
             var data = {
-                percentage: pct,
+                percentage: Math.round(pct),
                 calculatedUnits: (total - cancelled),
                 totalUnits: executedTestCases,
                 unit: this.unitLabel,
