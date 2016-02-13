@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sat Feb 13 2016 16:25:55 GMT-0700 (MST) -->
+    <!--  Build Date: Sat Feb 13 2016 16:54:23 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sat Feb 13 2016 16:25:55 GMT-0700 (MST)";
-        var CHECKSUM = 371929215586;
+        var APP_BUILD_DATE = "Sat Feb 13 2016 16:54:23 GMT-0700 (MST)";
+        var CHECKSUM = 369943496961;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1205,17 +1205,10 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         }
     });
 })();
-Ext.override (Rally.data.wsapi.TreeStore,{
-    _decorateModels: function() {
-        var models = this.model;
-
-        if (_.isFunction(models.getArtifactComponentModels)) {
-            models = models.getArtifactComponentModels();
-        }
-
-        _.each(Ext.Array.from(models), function(model) { var m = Rally.ui.grid.data.NodeInterface.decorate(model);  console.log('m',m);}, Rally.ui.grid.data.NodeInterface);
-    }
-});
+/**
+ * This needs to be overridden for the _getLeafCount function to workaround what I think is a bug in the API.
+ */
+var origGetPrototypeBody = Ext.data.NodeInterface.getPrototypeBody;
 
 Ext.override(Rally.ui.grid.data.NodeInterface, {
     extend: 'Ext.data.NodeInterface',
@@ -1359,7 +1352,7 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
                 _getLeafCount: function(expandedCollectionNames) {
                     var typePath = this.get('_type').toLowerCase(),
                         collectionNames = Ext.Array.from(expandedCollectionNames[typePath] || []);
-                    console.log('_getLeafCount', typePath, expandedCollectionNames);
+
                     var count =  _.reduce(collectionNames, function(accumulator, collectionName) {
                         var collectionVal = this.get(collectionName);
                         if (collectionVal && collectionVal.Count) {
@@ -2325,7 +2318,7 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
 //        Defect Density =( (Total Number of Defects – Cancelled defects – Rejected Defects) / Total Number of Test Cases Executed))
             var pct = executedTestCases > 0 ? (total - cancelled)/executedTestCases * 100 : 0;
             var data = {
-                percentage: pct,
+                percentage: Math.round(pct),
                 calculatedUnits: (total - cancelled),
                 totalUnits: executedTestCases,
                 unit: this.unitLabel,
