@@ -270,11 +270,9 @@ Ext.define("milestone-metrics", {
         var data = [];
 
         _.each(iterationHash, function(records, oid){
-            console.log('munge',oid, records);
             var row = this._getStatistics(records);
 
-
-            row.iteration = records[0].get('Iteration').Name;
+            row.iteration = records[0].get('Iteration') && records[0].get('Iteration').Name;
             row.project = records[0].get('Project').Name;
             row.startDate = (records[0].get('Iteration') && records[0].get('Iteration').StartDate) || '';
             row.endDate = (records[0].get('Iteration') && records[0].get('Iteration').EndDate) || '';

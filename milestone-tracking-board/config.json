@@ -15,6 +15,7 @@
       "cumulative-flow-calculator.js",
       "progress-cumulative-flow.js",
       "progress-minimal-pie-chart.js",
+      "overrides.js",
       "statsbanner.js",
       "statsbanner-widget.js",
       "statsbanner-gauge.js",

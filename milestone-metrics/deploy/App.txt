@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Metrics</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Dec 13 2015 20:59:48 GMT-0700 (MST) -->
+    <!--  Build Date: Sat Feb 13 2016 16:42:46 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Dec 13 2015 20:59:48 GMT-0700 (MST)";
-        var CHECKSUM = 28413957450;
+        var APP_BUILD_DATE = "Sat Feb 13 2016 16:42:46 GMT-0700 (MST)";
+        var CHECKSUM = 28403413071;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -262,7 +262,6 @@ Ext.define("milestone-metrics", {
             width: 300,
             value: ''
         });
-
         this.milestoneSelector.on('change', this._update, this);
         this.iterationFilter.on('change', this._filterIteration, this);
 
@@ -449,11 +448,9 @@ Ext.define("milestone-metrics", {
         var data = [];
 
         _.each(iterationHash, function(records, oid){
-            console.log('munge',oid, records);
             var row = this._getStatistics(records);
 
-
-            row.iteration = records[0].get('Iteration').Name;
+            row.iteration = records[0].get('Iteration') && records[0].get('Iteration').Name;
             row.project = records[0].get('Project').Name;
             row.startDate = (records[0].get('Iteration') && records[0].get('Iteration').StartDate) || '';
             row.endDate = (records[0].get('Iteration') && records[0].get('Iteration').EndDate) || '';

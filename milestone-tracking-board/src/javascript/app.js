@@ -237,7 +237,7 @@
                     //expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
                 };
 
-            config.filters = this._getFilters();
+            //config.filters = this._getFilters();
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(config).then({
                 success: function (store) {
                     return store;
@@ -377,6 +377,23 @@
                 ownerFilterControlConfig: {
                     stateful: true,
                     stateId: context.getScopedStateId('tracking-owner-filter')
+                }
+            });
+
+            plugins.push({
+                ptype: 'rallygridboardactionsmenu',
+                menuItems: [
+                    {
+                        text: 'Export...',
+                        handler: function() {
+                            window.location = Rally.ui.grid.GridCsvExport.buildCsvExportUrl(
+                                this.down('rallygridboard').getGridOrBoard());
+                        },
+                        scope: this
+                    }
+                ],
+                buttonConfig: {
+                    iconCls: 'icon-export'
                 }
             });
 
