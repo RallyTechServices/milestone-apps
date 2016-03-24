@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tagged Story Growth</title>
+    <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
+    <!--  Build Date: Thu Sep 03 2015 10:58:11 GMT-0600 (MDT) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Thu Sep 03 2015 10:58:11 GMT-0600 (MDT)";
+        var CHECKSUM = 14595230646;
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+             
+Ext.define('Rally.technicalservices.Toolbox',{
+    singleton: true,
+    getSettingAsArray: function(setting){
+        var setting_as_array = setting || [];
+        if (!(setting_as_array instanceof Array)){
+            setting_as_array = setting_as_array.split(',');
+        }
+        return setting_as_array;
+    },
+    populateTimeHash: function(startTime, endTime, granularity, key_format, records, date_field){
+        var hash = Rally.technicalservices.Toolbox.initializeTimeHash(startTime, endTime,granularity,key_format);
+         _.each(records, function(r){
+             var date_value = r.get(date_field);
+
+            if (date_value){
+                if (date_value < startTime){
+                    date_value = startTime;
+                }
+                var date_key = Rally.technicalservices.Toolbox.getTimeHashKey(date_value,key_format);
+                if (hash[date_key]){
+                    hash[date_key].push(r);
+                }
+            }
+        });
+        return hash;
+    },
+    getTimeCategories: function(startTime, endTime, granularity, key_format){
+        if (isNaN(Date.parse(startTime)) || isNaN(Date.parse(endTime))){
+            return [];
+        }
+        if (!Ext.Array.contains(['month','day'],granularity)){
+            return [];
+        }
+        var diff = Rally.util.DateTime.getDifference(endTime, startTime, granularity),
+            categories = [];
+
+        if (diff == 0){
+            categories.push(Rally.technicalservices.Toolbox.getTimeHashKey(startTime, key_format));
+            categories.push(Rally.technicalservices.Toolbox.getTimeHashKey(endTime, key_format));
+            return categories;
+        }
+
+        if (diff < 0){
+            var temp = startTime;
+            startTime = endTime;
+            endTime = temp;
+        }
+
+        var current_time = startTime;
+        while (current_time < endTime){
+            categories.push(Rally.technicalservices.Toolbox.getTimeHashKey(current_time,key_format));
+            current_time = Rally.util.DateTime.add(current_time, granularity, 1);
+        }
+        return categories;
+    },
+
+    initializeTimeHash: function(startTime, endTime, granularity, key_format){
+        var categories = Rally.technicalservices.Toolbox.getTimeCategories(startTime, endTime, granularity, key_format);
+        if (categories.length == 0){
+            return {};
+        }
+        return Rally.technicalservices.Toolbox.initializeArrayHash(categories);
+    },
+    initializeArrayHash: function(categories){
+        var hash = {};
+        _.each(categories, function(key){
+            hash[key] = [];
+        });
+        return hash;
+    },
+    getTimeHashKey: function(date, key_format){
+        if (!isNaN(Date.parse(date))){
+            return Rally.util.DateTime.format(date, key_format);
+        }
+        return null;
+    },
+    getCumulativeSumFromTimeHash: function(hash, categories, stopAtToday){
+        //First sort, then add.
+        var sums = _.map(_.range(categories.length), function(){return 0;}),
+            total_sum = 0,
+            idx = 0;
+
+        stopAtToday = stopAtToday || false;
+        var today = new Date();
+
+        _.each(categories, function(key){
+            var date = new Date(key);
+            if (stopAtToday && date > today){
+                sums[idx++] = null;
+            } else {
+                if (hash[key]){
+                    total_sum += hash[key].length;
+                }
+                sums[idx++] = total_sum;
+            }
+        });
+        return sums;
+    },
+    getCategories: function(records, category_field, attribute){
+        var categories = [];
+        _.each(records, function(r){
+            var field_value = Rally.technicalservices.Toolbox._getFieldValue(r,category_field, attribute);
+            if (field_value && !Ext.Array.contains(categories,field_value)){
+                categories.push(field_value);
+            }
+        });
+        return categories;
+    },
+    aggregateRecordsByCategory: function(categories, records, category_field, category_attribute){
+        var hash = Rally.technicalservices.Toolbox.initializeArrayHash(categories);
+        _.each(records, function(r){
+            var field = Rally.technicalservices.Toolbox._getFieldValue(r,category_field, category_attribute);
+            if (hash[field]){
+                hash[field].push(r);
+            }
+        });
+        return hash;
+    },
+    _getFieldValue: function(record, field, attribute){
+        var val = record.get(field) || null;
+        if (val && attribute){
+            return val[attribute];
+        }
+        return val;
+    },
+    getSeriesForFieldValueCount: function(hash, categories, field, field_value){
+        var series = [];
+        _.each(categories, function(c){
+            var recs = hash[c],
+                count = 0;
+            if (recs && recs.length > 0){
+                _.each(recs, function(r){
+                    if (r.get(field) == field_value){
+                        count++;
+                    }
+                });
+            }
+            series.push(count);
+        });
+        return series;
+    },
+    aggregateRecordsByField: function(records, field, field_attribute){
+        var aggregate_hash = {};
+
+        _.each(records, function(r){
+            var field_value = r.get(field);
+
+            if (field_attribute){
+                field_value = field_value[field_attribute];
+            }
+
+            if (field_value){
+                if (!aggregate_hash[field_value]){
+                    aggregate_hash[field_value] = [];
+                }
+                aggregate_hash[field_value].push(r);
+            }
+        });
+        return aggregate_hash;
+    }
+});
+
+Ext.define('Rally.technicalservices.WsapiToolbox',{
+   // logger: new Rally.technicalservices.Logger(),
+    singleton: true,
+    fetchLeafProjectsInScope: function(project_ref){
+        var deferred = Ext.create('Deft.Deferred');
+
+        Rally.technicalservices.WsapiToolbox.fetchProjectTree(project_ref).then({
+            success: function(project_tree){
+                var leaves = Rally.technicalservices.WsapiToolbox._getLeaves(project_tree);
+                deferred.resolve(leaves);
+            },
+            failure: function(msg){
+                deferred.reject(msg);
+            }
+        });
+
+        return deferred;
+    },
+    _getAll: function(tree){
+        var leaves = [];
+
+        if (!Ext.isArray(tree)){
+            tree = [tree];
+        }
+        _.each(tree, function(t){
+            leaves.push(t);
+            leaves = Ext.Array.merge(leaves, Rally.technicalservices.WsapiToolbox._getAll(t.get('Children')));
+
+        });
+        return leaves;
+    },
+    _getLeaves: function(tree){
+        var leaves = [];
+
+        if (!Ext.isArray(tree)){
+            tree = [tree];
+        }
+        _.each(tree, function(t){
+            if (t.get('Children').length == 0){
+                leaves.push(t);
+            } else {
+                leaves = Ext.Array.merge(leaves, Rally.technicalservices.WsapiToolbox._getLeaves(t.get('Children')));
+            }
+        });
+        return leaves;
+    },
+    fetchProjectTree: function(current_ref){
+        var deferred = Ext.create('Deft.Deferred');
+
+        var fetch = ['ObjectID','Name','Parent'];
+
+        var store = Ext.create('Rally.data.wsapi.Store',{
+            model: 'Project',
+            fetch: fetch
+        });
+
+        store.load({
+            scope: this,
+            callback: function(records, operation, success){
+                if (success){
+                    var project_tree = Rally.technicalservices.WsapiToolbox._getTreeArray(records, current_ref);
+                    deferred.resolve(project_tree);
+                } else {
+                    deferred.resolve('Error fetching projects: ' + operation.error.errors.join(','));
+                }
+            }
+        });
+        return deferred;
+    },
+    _getTreeArray:function(records, currentProjectRef) {
+
+        var projectHash = {};
+        _.each(records, function(rec){
+            projectHash[rec.get('ObjectID')] = rec;
+        });
+        var current_root = null;
+
+        var root_array = [];
+        Ext.Object.each(projectHash, function(oid,item){
+
+            if ( !item.get('Children') ) { item.set('Children',[]); }
+            var direct_parent = item.get('Parent');
+            if (!direct_parent && !Ext.Array.contains(root_array,item)) {
+                root_array.push(item);
+            } else {
+
+                var parent_oid =  direct_parent.ObjectID || direct_parent.get('ObjectID');
+                if (!projectHash[parent_oid]) {
+                    if ( !Ext.Array.contains(root_array,item) ) {
+                        root_array.push(item);
+                    }
+                } else {
+                    var parent = projectHash[parent_oid];
+
+                    if ( !parent.get('Children') ) { parent.set('Children',[]); }
+                    var kids = parent.get('Children');
+                    kids.push(item);
+                    parent.set('Children',kids);
+                }
+            }
+            var regex = new RegExp(item.get('_ref'));
+            if (regex.test(currentProjectRef)){
+                current_root = item;
+            }
+
+        },this);
+        return current_root;
+    },
+    fetchScheduleStates: function(){
+        var deferred = Ext.create('Deft.Deferred');
+        Rally.data.ModelFactory.getModel({
+            type: 'HierarchicalRequirement',
+            success: function(model) {
+                var field = model.getField('ScheduleState');
+                field.getAllowedValueStore({sort: {property: 'Ordinal', direction: 'ASC'}}).load({
+                    callback: function(records, operation, success) {
+                        if (success){
+                            var values = _.map(records, function(r){return r.get('StringValue')});
+                            deferred.resolve(values);
+                        } else {
+                            deferred.reject('Error loading ScheduleState values for User Story:  ' + operation.error.errors.join(','));
+                        }
+                    },
+                    scope: this
+                });
+            },
+            failure: function() {
+                var error = "Could not load schedule states";
+                deferred.reject(error);
+            }
+        });
+        return deferred.promise;
+    },
+    fetchDoneStates: function(){
+        var deferred = Ext.create('Deft.Deferred');
+        Rally.data.ModelFactory.getModel({
+            type: 'HierarchicalRequirement',
+            success: function(model) {
+                var field = model.getField('ScheduleState');
+                field.getAllowedValueStore().load({
+                    callback: function(records, operation, success) {
+                        if (success){
+                            var values = [];
+                            for (var i=records.length - 1; i > 0; i--){
+                                values.push(records[i].get('StringValue'));
+                                if (records[i].get('StringValue') == "Accepted"){
+                                    i = 0;
+                                }
+                            }
+                            deferred.resolve(values);
+                        } else {
+                            deferred.reject('Error loading ScheduleState values for User Story:  ' + operation.error.errors.join(','));
+                        }
+                    },
+                    scope: this
+                });
+            },
+            failure: function() {
+                var error = "Could not load schedule states";
+                deferred.reject(error);
+            }
+        });
+        return deferred.promise;
+    },
+
+    fetchWsapiRecords: function(config){
+        var deferred = Ext.create('Deft.Deferred');
+
+        config.limit = config.limit || 'Infinity';
+        config.pageSize = config.pageSize || 200;
+        config.sort = config.sort || [{
+                property: 'ObjectID',
+                direction: 'DESC'
+            }];
+        config.filters = config.filters || [];
+
+        Ext.create('Rally.data.wsapi.Store', config).load({
+            scope: this,
+            callback : function(records, operation, success) {
+             //   this.logger.log('fetchWsapiRecords success-->', success, ' operation-->', operation, ' records', records)
+                if (success){
+                    deferred.resolve(records);
+                } else {
+                    deferred.reject(Ext.String.format('Error loading Store (Model = {0}, Fetch = {1}: {2}',config.model, config.fetch.join(','), operation.error.errors.join(',')));
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    fetchPreferences: function(appId){
+        var deferred = Ext.create('Deft.Deferred');
+
+        if (appId){
+            Rally.data.PreferenceManager.load({
+                appID: appId,
+                success: function(prefs) {
+                    deferred.resolve(prefs);
+                }
+            });
+        } else {
+            deferred.resolve([]);
+        }
+
+        return deferred.promise;
+    },
+    fetchWsapiCount: function(model, query_filters){
+        var deferred = Ext.create('Deft.Deferred');
+
+        var store = Ext.create('Rally.data.wsapi.Store',{
+            model: model,
+            fetch: ['ObjectID'],
+            filters: query_filters,
+            limit: 1,
+            pageSize: 1
+        }).load({
+            callback: function(records, operation, success){
+                if (success){
+                    deferred.resolve(operation.resultSet.totalRecords);
+                } else {
+                    deferred.reject(Ext.String.format("Error getting {0} count for {1}: {2}", model, query_filters.toString(), operation.error.errors.join(',')));
+                }
+            }
+        });
+        return deferred;
+    }
+});
+
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+    title: "Build Information",
+    
+    defaults: { padding: 5, margin: 5 },
+
+    closable: true,
+     
+    draggable: true,
+
+    autoShow: true,
+   
+    width: 350, 
+    
+    initComponent: function() {
+        var id = Ext.id(this);
+        this.title =  "<span class='icon-help'> </span>" + this.title;
+        this.callParent(arguments);
+    },
+    
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+        
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+    
+        return chk;
+    },
+    
+    _checkChecksum: function(container) {
+        var deferred = Ext.create('Deft.Deferred');
+        console.log("_checkChecksum", container);
+        var me = this;
+        
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    if ( CHECKSUM !== me._generateChecksum(text) ) {
+                        console.log("Checksums don't match!");
+                        deferred.resolve(false);
+                        return;
+                    }
+                }
+                deferred.resolve(true);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    afterRender: function() {
+        var app = Rally.getApp();
+        
+        if (! app.isExternal() ) {
+                
+            this._checkChecksum(app).then({
+                scope: this,
+                success: function(result){
+                    if ( !result ) {
+                        this.addDocked({
+                            xtype:'container',
+                            cls: 'build-info',
+                            padding: 2,
+                            html:'<span class="icon-warning"> </span>Checksums do not match'
+                        });
+                    }
+                },
+                failure: function(msg){
+                    console.log("oops:",msg);
+                }
+            });
+        } else {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                html:'... Running externally'
+            });
+        }
+        this.callParent(arguments);
+    },
+    
+    beforeRender: function() {
+        var me = this;
+        this.callParent(arguments);
+
+        if (this.informationHtml) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                padding: 2,
+                html: this.informationHtml
+            });
+        }
+        
+        this.addDocked({
+            xtype:'container',
+            cls: 'build-info',
+            padding: 2,
+            html:"This app was created by the Rally Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                html:'Build date/time: ' + APP_BUILD_DATE
+            });
+        }
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+/**
+ * Displays the number of stories in the provided data set in each iteration.
+ */
+Ext.define('Rally.technicalservices.chart.CumulativeGrowth',{
+    extend: 'Rally.ui.chart.Chart',
+    alias: 'widget.tscumulativegrowth',
+    logger: new Rally.technicalservices.Logger(),
+
+    config: {
+        records: undefined,
+        startDate: undefined,
+        loadMask: false,
+        endDate: new Date(),
+        chartConfig: {
+            chart: {
+                type: 'area'
+            },
+            title: {
+                text: ''
+            },
+            xAxis: {
+                tickInterval: 5,
+                title: {
+                    enabled: false
+                }
+            },
+            yAxis: {
+                title: {
+                    text: '# Stories'
+                }
+            },
+            tooltip: {
+                pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:,.0f}</b> stories<br/>',
+                shared: true
+            },
+            plotOptions: {
+                area: {
+                    lineColor: '#000000',
+                    lineWidth: 1,
+                    marker: {
+                        enabled: false
+                    }
+                }
+            }
+        }
+    },
+
+    constructor: function(config) {
+        this.mergeConfig(config);
+        this.config.chartData = this._getChartData(config.records, config.taggedRecords, config.dateFieldMapping);
+        this.callParent([this.config]);
+
+    },
+    initComponent: function() {
+        this.callParent(arguments);
+    },
+    _getChartData: function(records, taggedRecords, dateFieldMapping){
+        var category_date_format = 'Y-m-d',
+            categories = Rally.technicalservices.Toolbox.getTimeCategories(this.startDate, this.endDate, 'day',category_date_format),
+            series = [];
+
+        var all_hash = Rally.technicalservices.Toolbox.populateTimeHash(this.startDate, this.endDate, 'day', category_date_format, records, 'CreationDate');
+
+        series.push({
+            name: 'All Stories in Release',
+            data: Rally.technicalservices.Toolbox.getCumulativeSumFromTimeHash(all_hash, categories, true),
+            visible: false
+        });
+
+        //Now do tagged stories
+        _.each(dateFieldMapping, function(field, name){
+            var hash = Rally.technicalservices.Toolbox.populateTimeHash(this.startDate, this.endDate, 'day', category_date_format, taggedRecords, field);
+            console.log('hash',field,name,hash);
+            series.push({
+                name: name,
+                data: Rally.technicalservices.Toolbox.getCumulativeSumFromTimeHash(hash, categories, true)
+            });
+        }, this);
+
+        this.logger.log('_getChartData', categories, series);
+
+        return {
+            categories: categories,
+            series: series
+        };
+
+    }
+});
+
+Ext.define("tagged-story-growth", {
+    extend: 'Rally.app.TimeboxScopedApp',
+    scopeType: 'release',
+    supportsUnscheduled: false,
+
+    componentCls: 'app',
+    logger: new Rally.technicalservices.Logger(),
+
+    config: {
+        defaultSettings: {
+            tagsOfInterest: []
+        }
+    },
+
+    onScopeChange: function(timeboxScope){
+
+        if (!this.doneStates){
+            Rally.technicalservices.WsapiToolbox.fetchDoneStates().then({
+                scope: this,
+                success: function(doneStates){
+                    this.doneStates = doneStates;
+                    this._validateSettings();
+                },
+                failure: function(msg){
+                    Rally.ui.notify.Notifier.showError({message: msg});
+                }
+            });
+        } else {
+            this._validateSettings();
+        }
+    },
+    _validateSettings: function(){
+        var tags = this._getTags();
+
+        if (this.down('#display_box')){
+            this.down('#display_box').destroy();
+        }
+
+        this.logger.log('_validateSettings > tags', tags);
+        if (this._getTags().length > 0){
+            this.add({
+                xtype: 'container',
+                itemId: 'display_box',
+                width: '100%'
+            });
+            this._fetchStories(this._getTags());
+        } else {
+            this.add({
+                xtype: 'container',
+                itemId: 'display_box',
+                html: 'No tags have been configured.  Please use the App Settings to configure at least one tag of interest.'
+            });
+        }
+
+    },
+    _getTags: function(){
+        var tags = this.getSetting('tagsOfInterest') || [];
+        if (!(tags instanceof Array)){
+            tags = tags.split(',');
+        }
+        return tags;
+    },
+    _fetchStories: function(tags){
+        var me = this,
+            release_name = this.getContext().getTimeboxScope().getRecord().get('Name'),
+            tag_filter_objs = [];
+
+        _.each(tags, function(tag){
+            tag_filter_objs.push({
+                property: 'Tags',
+                operator: '=',
+                value: tag
+            });
+        });
+
+        var filter_obj = {
+            property: 'Release.Name',
+            operator: '=',
+            value: release_name
+        };
+
+        var filters = Rally.data.wsapi.Filter.or(tag_filter_objs);
+        filters = filters.and(filter_obj);
+
+        this.logger.log('_fetchStories > filters', filters.toString());
+        var fetch = ['FormattedID','ObjectID','Project','CreationDate','AcceptedDate','Name'],
+            model = 'HierarchicalRequirement',
+            promises = [
+                Rally.technicalservices.WsapiToolbox.fetchWsapiRecords({model: model, fetch: fetch, filters: [filter_obj]}),
+                Rally.technicalservices.WsapiToolbox.fetchWsapiRecords({model: model, fetch: fetch, filters: filters})
+            ];
+
+        this.setLoading('Loading tagged stories...');
+        Deft.Promise.all(promises).then({
+            scope: this,
+            success: function(results){
+                this.logger.log('_fetchStories > records loaded', results[0].length, results[1].length);
+                this._buildChart(results[0], results[1]);
+            },
+            failure: function(msg){
+                Rally.ui.notify.Notifier.showError({message: msg});
+            }
+        }).always(function(){ me.setLoading(false);});
+    },
+
+    _buildChart: function(all_stories, tagged_stories){
+        this.add({
+            xtype: 'tscumulativegrowth',
+            itemId: 'display_box',
+            records: all_stories,
+            taggedRecords: tagged_stories,
+            dateFieldMapping: {
+                Created: 'CreationDate',
+                Accepted: 'AcceptedDate'
+            },
+            startDate: this.getContext().getTimeboxScope().getRecord().get('ReleaseStartDate'),
+            endDate: this.getContext().getTimeboxScope().getRecord().get('ReleaseDate')
+        });
+    },
+
+    getOptions: function() {
+        return [
+            {
+                text: 'About...',
+                handler: this._launchInfo,
+                scope: this
+            }
+        ];
+    },
+
+    _launchInfo: function() {
+        if ( this.about_dialog ) { this.about_dialog.destroy(); }
+        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
+    },
+    getSettingsFields: function(){
+        return [{
+            xtype: 'rallytagpicker',
+            name: 'tagsOfInterest',
+            fieldLabel: 'Tags',
+            labelAlign: 'right',
+            labelWidth: 150,
+            width: 400,
+            margin: '0 0 200 0'
+        }];
+    },
+    isExternal: function(){
+        return typeof(this.getAppId()) == 'undefined';
+    },
+    onSettingsUpdate: function (settings){
+        this.logger.log('onSettingsUpdate',settings);
+        Ext.apply(this, settings);
+        this._validateSettings();
+    }
+});
+
+            
+               Rally.launchApp('tagged-story-growth', {
+                   name: 'Tagged Story Growth'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+    </style>
+
+</head>
+<body></body>
+</html>
