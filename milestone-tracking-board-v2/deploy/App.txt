@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Mar 24 2016 13:13:06 GMT-0600 (MDT) -->
+    <!--  Build Date: Thu Mar 24 2016 13:28:43 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Mar 24 2016 13:13:06 GMT-0600 (MDT)";
-        var CHECKSUM = 218565793088;
+        var APP_BUILD_DATE = "Thu Mar 24 2016 13:28:43 GMT-0600 (MDT)";
+        var CHECKSUM = 216945196306;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -2453,14 +2453,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
                 labelAlign: 'right',
                 label: 'Show TestCaseResult Attachments'
             });
-
-            fields.push({
-                name: 'ignoreProjectScoping',
-                xtype: 'rallycheckboxfield',
-                labelWidth: labelWidth,
-                labelAlign: 'right',
-                label: 'Show Children in any Project'
-            });
+            
             return fields;
         },
         _getFilters: function(){
@@ -2487,16 +2480,14 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
             return null;
         },
         _getGridStore: function() {
-            var context = this.getContext(),
-                config = {
+            var config = {
                     models: this._getModelNames(),
                     autoLoad: false,
                     remoteSort: true,
                     pageSize: 200,
                     limit: 'Infinity',
                     root: {expanded: true},
-                    enableHierarchy: true,
-                    //expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
+                    enableHierarchy: true
                 };
 
             //config.filters = this._getFilters();

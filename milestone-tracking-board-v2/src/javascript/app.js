@@ -230,14 +230,7 @@
                 labelAlign: 'right',
                 label: 'Show TestCaseResult Attachments'
             });
-
-            fields.push({
-                name: 'ignoreProjectScoping',
-                xtype: 'rallycheckboxfield',
-                labelWidth: labelWidth,
-                labelAlign: 'right',
-                label: 'Show Children in any Project'
-            });
+            
             return fields;
         },
         _getFilters: function(){
@@ -264,16 +257,14 @@
             return null;
         },
         _getGridStore: function() {
-            var context = this.getContext(),
-                config = {
+            var config = {
                     models: this._getModelNames(),
                     autoLoad: false,
                     remoteSort: true,
                     pageSize: 200,
                     limit: 'Infinity',
                     root: {expanded: true},
-                    enableHierarchy: true,
-                    //expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
+                    enableHierarchy: true
                 };
 
             //config.filters = this._getFilters();
