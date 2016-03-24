@@ -8,14 +8,8 @@
       "__ts-info-link.js",
       "__ts-logger.js",
       "utilities.js",
-       "progress-chart.js",
-       "progress-mixin.js",
-      "progress-pie-chart.js",
       "milestone-combobox-override.js",
       "chunker-store.js",
-      "cumulative-flow-calculator.js",
-      "progress-cumulative-flow.js",
-      "progress-minimal-pie-chart.js",
       "overrides.js",
       "statsbanner.js",
       "statsbanner-widget.js",
@@ -28,13 +22,6 @@
       "statsbanner-collapseexpand.js",
       "statsbanner-latestories.js",
       "statsbanner-timeboxend.js",
-      "progress-dialog-chart-toggle.js",
-      "progress-dialog.js",
-
-       "progress.js",
-
-      "progress-burndown-chart.js",
-      "progress-cumulative-flow.js",
       "app.js"
    ]
 }
