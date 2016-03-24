@@ -1,0 +1,7 @@
+{
+    "name": "Milestone Story Growth",
+    "className": "milestone-story-growth",
+    "server": "https://rally1.rallydev.com",
+    "sdk": "2.0",
+    "apiKey": "_PUT_APIKEY_HERE_"
+}

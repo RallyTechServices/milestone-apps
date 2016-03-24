@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Milestone Stories by Team</title>
+    <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
+    <!--  Build Date: Fri Sep 04 2015 07:08:15 GMT-0600 (MDT) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Fri Sep 04 2015 07:08:15 GMT-0600 (MDT)";
+        var CHECKSUM = [%= checksum %];
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+            
+            
+               Rally.launchApp('milestone-story-by-team', {
+                   name: 'Milestone Stories by Team'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+.ts-icon {
+    color:#FAD200;
+    font-size:14px;
+    width:20px;
+    margin-right: 5px;
+}
+    </style>
+
+</head>
+<body></body>
+</html>
