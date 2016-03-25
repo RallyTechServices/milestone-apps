@@ -9,7 +9,7 @@
         extend: 'Rally.app.App',
         componentCls: 'iterationtrackingboard',
         logger: new Rally.technicalservices.Logger(),
-        settingsScope: 'project',
+       // settingsScope: 'project',
         //autoScroll: false,
 
         config: {
@@ -42,7 +42,7 @@
             Rally.data.ModelFactory.getModel({
                 type: 'Defect',
                 success: function(defectModel) {
-                    console.log('getmodel',this);
+
                     var promises = [
                         Rally.technicalservices.Utilities.fetchScheduleStates(),
                         Rally.technicalservices.Utilities.fetchPortfolioTypes(),
@@ -70,6 +70,13 @@
             });
         },
         _addComponents: function(){
+            this.logger.log('_addComponents');
+            this.down('#selection_box').removeAll();
+            this.down('#banner_box').removeAll();
+            this.down('#grid_box').removeAll();
+            if (this.down('rallygridboard')){
+                this.down('rallygridboard').destroy();
+            }
 
             var filters = Ext.create('Rally.data.wsapi.Filter',{
                 property: 'Projects',
@@ -174,7 +181,7 @@
             var settings = this.getSettings(),
                 states = this.defectStates || [],
                 defectResolutions = this.defectResolutions || [],
-                fields = this.callParent(arguments),
+                fields = [],
                 labelWidth = 200,
                 width= 600;
 
@@ -186,11 +193,10 @@
             }
             var stateOptions = _.map(states, function(s){
                 var checked = Ext.Array.contains(closedStates, s);
-                console.log('stat',s,checked);
-                return { boxLabel: s, name: 'closedDefectStates', inputValue: s, checked: checked };
+                 return { boxLabel: s, name: 'closedDefectStates', inputValue: s, checked: checked };
             });
 
-            var resolvedValues = settings && settings.resolvedDefectValues;
+            var resolvedValues = settings && settings.resolvedDefectValues || [];
             if (resolvedValues && Ext.isString(resolvedValues)){
                 resolvedValues = resolvedValues.split(',');
             }
@@ -213,7 +219,7 @@
 
             fields.push({
                 xtype: 'checkboxgroup',
-                fieldLabel: 'Include Defects with Resolution',
+                fieldLabel: 'Exclude Defects with Resolution',
                 labelWidth: labelWidth,
                 width: width,
                 labelAlign: 'right',
@@ -230,7 +236,7 @@
                 labelAlign: 'right',
                 label: 'Show TestCaseResult Attachments'
             });
-            
+
             return fields;
         },
         _getFilters: function(){
@@ -328,6 +334,17 @@
         },
         _addStatsBanner: function(customFilters) {
 
+            var closedDefectStates = this.getSetting('closedDefectStates') || [],
+                resolvedDefectStates = this.getSetting('resolvedDefectValues')|| [];
+            this.logger.log('_addStatsBanner', closedDefectStates, resolvedDefectStates);
+            if (Ext.isString(closedDefectStates)){
+                closedDefectStates = closedDefectStates.split(',');
+            }
+
+            if (Ext.isString(resolvedDefectStates)){
+                resolvedDefectStates = resolvedDefectStates.split(',');
+            }
+            this.logger.log('_addStatsBanner', closedDefectStates, resolvedDefectStates);
             this.remove('statsBanner');
             this.down('#banner_box').add({
                 xtype: 'statsbanner',
@@ -339,8 +356,8 @@
                 timeboxEndDateField: 'TargetDate',
                 filters: this._getFilters(),
                 customFilters: customFilters,
-                closedDefectStates: this.getSetting('closedDefectStates'),
-                resolvedDefectValues: this.getSetting('resolvedDefectValues'),
+                closedDefectStates: closedDefectStates,
+                resolvedDefectValues: resolvedDefectStates,
                 margin: '0 0 5px 0',
                 listeners: {
                     resize: this._resizeGridBoardToFillSpace,
@@ -739,13 +756,13 @@
             return typeof(this.getAppId()) == 'undefined';
         },
         onSettingsUpdate: function(settings){
-            this.down('#selection_box').removeAll();
-            this.down('#banner_box').removeAll();
-            this.down('#grid_box').removeAll();
-            if (this.down('rallygridboard')){
-                this.down('rallygridboard').destroy();
-            }
+            this.logger.log('onSettingsUpdate',this, settings);
             this._addComponents();
-        }
+        },
+        _onSettingsSaved: function(settings) {
+            Ext.apply(this.settings, settings);
+            this._hideSettings();
+            this.onSettingsUpdate(settings);
+        },
     });
 })();

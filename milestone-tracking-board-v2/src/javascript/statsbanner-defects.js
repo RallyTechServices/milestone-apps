@@ -25,7 +25,7 @@
                 resolvedValues = this.resolvedDefectValues;
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                if (r.get('_type').toLowerCase() === 'defect' && Ext.Array.contains(resolvedValues, r.get('Resolution'))){
+                if (r.get('_type').toLowerCase() === 'defect' && !Ext.Array.contains(resolvedValues, r.get('Resolution'))){
                     if (Ext.Array.contains(closedStates, r.get('State'))){
                         closed++;
                     }

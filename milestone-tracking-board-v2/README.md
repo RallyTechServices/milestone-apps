@@ -1,7 +1,7 @@
 #Milestone Tracking Board (version 2)
 Shows the User Stories, Defects and lowest level portfolio items associated with the selected milestone.  
 
-![ScreenShot](/images/milestone-tracking-board.png)
+![ScreenShot](/images/milestone-tracking-board-v2.png)
 
 At the top level of the tree grid, only items explicitly associated with the selected milestone will be shown at the top level of the tree grid.
 The children for each item will also be shown regardless of whether or not they are explicitly associated with the milestone.  
@@ -18,25 +18,37 @@ The data included in the banner calculations include work items that meet the fo
 
 Note that User Stories that are decendents of a Feature or Parent User Story explicitly associated with the Milestone are **NOT** included in the banner rollup calculations.  The User story must be EXPLICITLY associated with the Milestone.  
 
-###Accepted Points
-Sum of all plan estimates from the dataset above (excluding test cases) where the schedule state is Accepted or greater.
-
-###Estimated Work Items
-Number of all work items from the dataset above (excluding Test Cases) where the PlanEstimate is not null.  This includes work items that have a Plan Estimate = 0
-
 ###Accepted Count
-Number of all work items from the dataset above (excluding test cases) where the Schedule State is Accepted or greater.
+Number of all User Stories (excludes defects and testcases) from the dataset above where the Schedule State is Accepted or greater.
 
-###Active Defects
-Number of Defects from the above dataset where the State != Closed
+###Accepted Points
+Sum of all plan estimates from User Stories (excludes defects and testcases) where the schedule state is Accepted or greater.
 
-###Test Cases Passed
-Number of Test Cases from the above dataset where the Last Verdict = Passed
+###Test Coverage
+The percent of user stories that have at least 1 test case associated with them.  
 
-### Version 2 specific updates (e.g. how is this different from the milestone-tracking-board app?)
-*  Included ability to add column "Attachments" to show number of attachments
-*  Updated dials
-    *  Accepted User Stories - only includes user stories that are in the accepted (or higher) state and associated directly with the milestone
-    *  Accepted Points - only includes points from user stories that are in the accepted (or higher) state and associated directly with the milestone
+###Test Cases Executed
+Number of Test Cases associated with a User Story that is associated with the milestone.  In order to be considered as "executed" a test case must meet the following criteria:
+(1) Each TestCaseResults must have at least 1 Attachment
+(2) LastRun date must be less than or equal to the selected Milestone Target Date
+
+###UAT Test Cases Executed
+Number of Test Cases where the Type = "Acceptance" that are associated with a User Story that is associated with the milestone.  In order to be considered as "executed" a test case must meet the following criteria:
+(1) Each TestCaseResults must have at least 1 Attachment
+(2) LastRun date must be less than or equal to the selected Milestone Target Date
+Note that in the grid, if a Test Case has a last verdict but does not meet the above criteria, it will be flagged and not counted in the stats banner.  
+
+###Closed Defects
+Number of Defects associated with the Milestone (Either directly or via a User Story associated with the Milestone) that 
+have a Resolution in the list of included Resolutions (as configured in the App Settings) and that 
+are in a state considered "Closed" (as configured in the App Settings)
+
+###App Configuration
+
+![ScreenShot](/images/milestone-tracking-board-v2-settings.png)
+
+Closed Defect States - determines which defect states are considered "Closed".  Defaults to "Closed"
+Exclude Defects with Resolution - determines which defects are excluded from the defect data set.  Defaults to None. 
+Show Test Case Result Attachments - If selected, will show the number of TestCaseResults with at least 1 Attachment for the TestCase in the format of "2/3" meaning "2 of 3 TestCaseResults has at least 1 attachment".
 
  
