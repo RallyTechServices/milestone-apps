@@ -250,7 +250,8 @@ Ext.define('Rally.ui.renderer.template.LastVerdictTemplate', {
         if (recordData.resultsTotal !== recordData.resultsWithAttachments){
            warnings.push("<li>Not all Test Case Results have Attachments.");
        }
-       if (recordData.LastRun < recordData._milestoneTargetDate){
+
+       if (recordData.LastRun > recordData._milestoneTargetDate){
            warnings.push("<li>Last Verdict ran after Milestone Target Date.");
        }
 

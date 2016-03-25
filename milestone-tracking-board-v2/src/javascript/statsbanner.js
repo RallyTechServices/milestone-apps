@@ -120,7 +120,7 @@
             if (!oids || oids.length === 0){
                 return;
             }
-
+            var targetDate = Rally.util.DateTime.fromIsoString(this.timeboxRecord.get(this.timeboxEndDateField));
             Ext.create('Rally.technicalservices.data.ChunkerStore',{
                 model: 'TestCaseResult',
                 chunkOids: oids,
@@ -134,6 +134,7 @@
 
                         tc.set('_resultsTotal',results.length);
                         tc.set('_resultsWithAttachments',resultsWithAttachments.length);
+                        tc.set('_milestoneTargetDate', targetDate)
                     });
                     store.fireEvent('datachanged');
                 },

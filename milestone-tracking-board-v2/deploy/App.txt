@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri Mar 25 2016 16:39:48 GMT-0600 (MDT) -->
+    <!--  Build Date: Fri Mar 25 2016 17:02:20 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Mar 25 2016 16:39:48 GMT-0600 (MDT)";
-        var CHECKSUM = 219623925884;
+        var APP_BUILD_DATE = "Fri Mar 25 2016 17:02:20 GMT-0600 (MDT)";
+        var CHECKSUM = 220645346918;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -701,7 +701,8 @@ Ext.define('Rally.ui.renderer.template.LastVerdictTemplate', {
         if (recordData.resultsTotal !== recordData.resultsWithAttachments){
            warnings.push("<li>Not all Test Case Results have Attachments.");
        }
-       if (recordData.LastRun < recordData._milestoneTargetDate){
+
+       if (recordData.LastRun > recordData._milestoneTargetDate){
            warnings.push("<li>Last Verdict ran after Milestone Target Date.");
        }
 
@@ -879,7 +880,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
             if (!oids || oids.length === 0){
                 return;
             }
-
+            var targetDate = Rally.util.DateTime.fromIsoString(this.timeboxRecord.get(this.timeboxEndDateField));
             Ext.create('Rally.technicalservices.data.ChunkerStore',{
                 model: 'TestCaseResult',
                 chunkOids: oids,
@@ -893,6 +894,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
 
                         tc.set('_resultsTotal',results.length);
                         tc.set('_resultsWithAttachments',resultsWithAttachments.length);
+                        tc.set('_milestoneTargetDate', targetDate)
                     });
                     store.fireEvent('datachanged');
                 },
@@ -1780,7 +1782,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
                         r.get('_milestoneTargetDate') &&
                     r.get('LastRun') < r.get('_milestoneTargetDate');
 
-                if (r.get('LastRun') && r.get('_resultsTotal') &&
+                if (r.get('_resultsTotal') &&
                         r.get('_resultsTotal') === r.get('_resultsWithAttachments') &&
                         runBeforeMilestoneTarget) {
                     executed++;
@@ -2508,7 +2510,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
             this.logger.log('_loadAttachmentInformation', store , records);
             var displayTestCaseResultAttachments = this.getSetting('displayTestCaseResultAttachments') === 'true' ||
                 this.getSetting('displayTestCaseResultAttachments') === true,
-                milestoneTargetDate = this._getTimeBoxRecord().get('TargetDate');
+                milestoneTargetDate = Rally.util.DateTime.fromIsoString(this._getTimeBoxRecord().get('TargetDate'));
 
             if (!records || records.length === 0 ){
                 return;

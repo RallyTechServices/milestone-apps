@@ -47,7 +47,7 @@
                         r.get('_milestoneTargetDate') &&
                     r.get('LastRun') < r.get('_milestoneTargetDate');
 
-                if (r.get('LastRun') && r.get('_resultsTotal') &&
+                if (r.get('_resultsTotal') &&
                         r.get('_resultsTotal') === r.get('_resultsWithAttachments') &&
                         runBeforeMilestoneTarget) {
                     executed++;

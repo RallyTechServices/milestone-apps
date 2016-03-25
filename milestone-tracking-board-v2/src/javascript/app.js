@@ -286,7 +286,7 @@
             this.logger.log('_loadAttachmentInformation', store , records);
             var displayTestCaseResultAttachments = this.getSetting('displayTestCaseResultAttachments') === 'true' ||
                 this.getSetting('displayTestCaseResultAttachments') === true,
-                milestoneTargetDate = this._getTimeBoxRecord().get('TargetDate');
+                milestoneTargetDate = Rally.util.DateTime.fromIsoString(this._getTimeBoxRecord().get('TargetDate'));
 
             if (!records || records.length === 0 ){
                 return;
