@@ -42,7 +42,6 @@
                     return false;
                 });
 
-            console.log('_getrenderdata', testCaseTypes,workProducts, testCases, this.store.getRange().length);
             Ext.Array.each(testCases, function(r) {
                 var runBeforeMilestoneTarget = r.get('LastRun') &&
                         r.get('_milestoneTargetDate') &&
@@ -93,7 +92,7 @@
                 secondaryUnit: "passed",
                 tooltip: this.tooltip
             };
-            console.log('_getrenderdata', data, executed, passed, total);
+
             return data;
 
         }

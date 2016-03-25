@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Mar 24 2016 13:28:43 GMT-0600 (MDT) -->
+    <!--  Build Date: Fri Mar 25 2016 16:39:48 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Mar 24 2016 13:28:43 GMT-0600 (MDT)";
-        var CHECKSUM = 216945196306;
+        var APP_BUILD_DATE = "Fri Mar 25 2016 16:39:48 GMT-0600 (MDT)";
+        var CHECKSUM = 219623925884;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1708,7 +1708,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
                 resolvedValues = this.resolvedDefectValues;
 
             Ext.Array.each(this.store.getRange(), function(r) {
-                if (r.get('_type').toLowerCase() === 'defect' && Ext.Array.contains(resolvedValues, r.get('Resolution'))){
+                if (r.get('_type').toLowerCase() === 'defect' && !Ext.Array.contains(resolvedValues, r.get('Resolution'))){
                     if (Ext.Array.contains(closedStates, r.get('State'))){
                         closed++;
                     }
@@ -1775,7 +1775,6 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
                     return false;
                 });
 
-            console.log('_getrenderdata', testCaseTypes,workProducts, testCases, this.store.getRange().length);
             Ext.Array.each(testCases, function(r) {
                 var runBeforeMilestoneTarget = r.get('LastRun') &&
                         r.get('_milestoneTargetDate') &&
@@ -1826,7 +1825,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
                 secondaryUnit: "passed",
                 tooltip: this.tooltip
             };
-            console.log('_getrenderdata', data, executed, passed, total);
+
             return data;
 
         }
@@ -2232,7 +2231,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
         extend: 'Rally.app.App',
         componentCls: 'iterationtrackingboard',
         logger: new Rally.technicalservices.Logger(),
-        settingsScope: 'project',
+       // settingsScope: 'project',
         //autoScroll: false,
 
         config: {
@@ -2265,7 +2264,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
             Rally.data.ModelFactory.getModel({
                 type: 'Defect',
                 success: function(defectModel) {
-                    console.log('getmodel',this);
+
                     var promises = [
                         Rally.technicalservices.Utilities.fetchScheduleStates(),
                         Rally.technicalservices.Utilities.fetchPortfolioTypes(),
@@ -2293,6 +2292,13 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
             });
         },
         _addComponents: function(){
+            this.logger.log('_addComponents');
+            this.down('#selection_box').removeAll();
+            this.down('#banner_box').removeAll();
+            this.down('#grid_box').removeAll();
+            if (this.down('rallygridboard')){
+                this.down('rallygridboard').destroy();
+            }
 
             var filters = Ext.create('Rally.data.wsapi.Filter',{
                 property: 'Projects',
@@ -2397,7 +2403,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
             var settings = this.getSettings(),
                 states = this.defectStates || [],
                 defectResolutions = this.defectResolutions || [],
-                fields = this.callParent(arguments),
+                fields = [],
                 labelWidth = 200,
                 width= 600;
 
@@ -2409,11 +2415,10 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
             }
             var stateOptions = _.map(states, function(s){
                 var checked = Ext.Array.contains(closedStates, s);
-                console.log('stat',s,checked);
-                return { boxLabel: s, name: 'closedDefectStates', inputValue: s, checked: checked };
+                 return { boxLabel: s, name: 'closedDefectStates', inputValue: s, checked: checked };
             });
 
-            var resolvedValues = settings && settings.resolvedDefectValues;
+            var resolvedValues = settings && settings.resolvedDefectValues || [];
             if (resolvedValues && Ext.isString(resolvedValues)){
                 resolvedValues = resolvedValues.split(',');
             }
@@ -2436,7 +2441,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
 
             fields.push({
                 xtype: 'checkboxgroup',
-                fieldLabel: 'Include Defects with Resolution',
+                fieldLabel: 'Exclude Defects with Resolution',
                 labelWidth: labelWidth,
                 width: width,
                 labelAlign: 'right',
@@ -2453,7 +2458,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
                 labelAlign: 'right',
                 label: 'Show TestCaseResult Attachments'
             });
-            
+
             return fields;
         },
         _getFilters: function(){
@@ -2551,6 +2556,17 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
         },
         _addStatsBanner: function(customFilters) {
 
+            var closedDefectStates = this.getSetting('closedDefectStates') || [],
+                resolvedDefectStates = this.getSetting('resolvedDefectValues')|| [];
+            this.logger.log('_addStatsBanner', closedDefectStates, resolvedDefectStates);
+            if (Ext.isString(closedDefectStates)){
+                closedDefectStates = closedDefectStates.split(',');
+            }
+
+            if (Ext.isString(resolvedDefectStates)){
+                resolvedDefectStates = resolvedDefectStates.split(',');
+            }
+            this.logger.log('_addStatsBanner', closedDefectStates, resolvedDefectStates);
             this.remove('statsBanner');
             this.down('#banner_box').add({
                 xtype: 'statsbanner',
@@ -2562,8 +2578,8 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
                 timeboxEndDateField: 'TargetDate',
                 filters: this._getFilters(),
                 customFilters: customFilters,
-                closedDefectStates: this.getSetting('closedDefectStates'),
-                resolvedDefectValues: this.getSetting('resolvedDefectValues'),
+                closedDefectStates: closedDefectStates,
+                resolvedDefectValues: resolvedDefectStates,
                 margin: '0 0 5px 0',
                 listeners: {
                     resize: this._resizeGridBoardToFillSpace,
@@ -2962,14 +2978,14 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
             return typeof(this.getAppId()) == 'undefined';
         },
         onSettingsUpdate: function(settings){
-            this.down('#selection_box').removeAll();
-            this.down('#banner_box').removeAll();
-            this.down('#grid_box').removeAll();
-            if (this.down('rallygridboard')){
-                this.down('rallygridboard').destroy();
-            }
+            this.logger.log('onSettingsUpdate',this, settings);
             this._addComponents();
-        }
+        },
+        _onSettingsSaved: function(settings) {
+            Ext.apply(this.settings, settings);
+            this._hideSettings();
+            this.onSettingsUpdate(settings);
+        },
     });
 })();
             
