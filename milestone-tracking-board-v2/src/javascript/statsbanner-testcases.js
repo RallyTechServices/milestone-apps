@@ -33,7 +33,7 @@
                 workProducts = _.map(workProducts, function(wp){
                     return wp.get('ObjectID');
                 });
-
+                console.log('testcasetypes', this.testCaseTypes)
                 var testCases = _.filter(this.testCaseStore.getRange(), function(tc){
                     if (Ext.Array.contains(workProducts, tc.get('WorkProduct').ObjectID) &&
                         (testCaseTypes.length === 0 || Ext.Array.contains(testCaseTypes, tc.get('Type')))){

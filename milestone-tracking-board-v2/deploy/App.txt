@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri Mar 25 2016 17:02:20 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Mar 29 2016 11:27:36 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Mar 25 2016 17:02:20 GMT-0600 (MDT)";
-        var CHECKSUM = 220645346918;
+        var APP_BUILD_DATE = "Tue Mar 29 2016 11:27:36 GMT-0600 (MDT)";
+        var CHECKSUM = 223066270926;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -819,7 +819,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
                 xtype: 'statsbannertestcases',
                 title: 'UAT Tests Executed',
                 unitLabel: 'executed',
-                testCaseTypes: ['Acceptance'],
+                testCaseTypes: [],
                 flex: 2,
                 enableTooltip: true,
                 tooltip: 'The number of UAT test cases associated with the milestone User Stories.</br></br>Passed Test cases are the number of those test cases where the Last Verdict = Passed, Last Run < Milestone Target Date and every result has an attachment.  Executed test cases are the number of those test cases that have been run and all results have an attachment, but where the Last Verdict is not Passed.'
@@ -859,6 +859,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
             this._createTestCaseStore();
 
             //need to configure the items at the instance level, not the class level (i.e. don't use the 'defaults' config)
+            this.items[4].testCaseTypes = this.uatTestCaseType;
             this.items = this._configureItems(this.items);
 
             this.on('expand', this._onExpand, this);
@@ -1768,7 +1769,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
                 workProducts = _.map(workProducts, function(wp){
                     return wp.get('ObjectID');
                 });
-
+                console.log('testcasetypes', this.testCaseTypes)
                 var testCases = _.filter(this.testCaseStore.getRange(), function(tc){
                     if (Ext.Array.contains(workProducts, tc.get('WorkProduct').ObjectID) &&
                         (testCaseTypes.length === 0 || Ext.Array.contains(testCaseTypes, tc.get('Type')))){
@@ -2241,7 +2242,8 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
                 ignoreProjectScoping: true,
                 closedDefectStates: ['Closed'],
                 resolvedDefectValues: [],
-                displayTestCaseResultAttachments: true
+                displayTestCaseResultAttachments: true,
+                uatTestCaseType: 'Acceptance'
             }
         },
         items: [
@@ -2454,6 +2456,16 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
             });
 
             fields.push({
+                name: 'uatTestCaseType',
+                xtype: 'rallyfieldvaluecombobox',
+                fieldLabel: 'UAT Test Type',
+                labelWidth: labelWidth,
+                labelAlign: 'right',
+                model: 'TestCase',
+                field: 'Type'
+            });
+
+            fields.push({
                 name: 'displayTestCaseResultAttachments',
                 xtype: 'rallycheckboxfield',
                 labelWidth: labelWidth,
@@ -2559,8 +2571,10 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
         _addStatsBanner: function(customFilters) {
 
             var closedDefectStates = this.getSetting('closedDefectStates') || [],
-                resolvedDefectStates = this.getSetting('resolvedDefectValues')|| [];
-            this.logger.log('_addStatsBanner', closedDefectStates, resolvedDefectStates);
+                resolvedDefectStates = this.getSetting('resolvedDefectValues')|| [],
+                uatTestTypes = [this.getSetting('uatTestCaseType')];
+
+            this.logger.log('_addStatsBanner', closedDefectStates, resolvedDefectStates, uatTestTypes);
             if (Ext.isString(closedDefectStates)){
                 closedDefectStates = closedDefectStates.split(',');
             }
@@ -2582,6 +2596,7 @@ Ext.override(Rally.ui.renderer.RendererFactory,{
                 customFilters: customFilters,
                 closedDefectStates: closedDefectStates,
                 resolvedDefectValues: resolvedDefectStates,
+                uatTestCaseType: uatTestTypes,
                 margin: '0 0 5px 0',
                 listeners: {
                     resize: this._resizeGridBoardToFillSpace,
