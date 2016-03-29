@@ -59,7 +59,7 @@
                 xtype: 'statsbannertestcases',
                 title: 'UAT Tests Executed',
                 unitLabel: 'executed',
-                testCaseTypes: ['Acceptance'],
+                testCaseTypes: [],
                 flex: 2,
                 enableTooltip: true,
                 tooltip: 'The number of UAT test cases associated with the milestone User Stories.</br></br>Passed Test cases are the number of those test cases where the Last Verdict = Passed, Last Run < Milestone Target Date and every result has an attachment.  Executed test cases are the number of those test cases that have been run and all results have an attachment, but where the Last Verdict is not Passed.'
@@ -99,6 +99,7 @@
             this._createTestCaseStore();
 
             //need to configure the items at the instance level, not the class level (i.e. don't use the 'defaults' config)
+            this.items[4].testCaseTypes = this.uatTestCaseType;
             this.items = this._configureItems(this.items);
 
             this.on('expand', this._onExpand, this);

@@ -17,7 +17,8 @@
                 ignoreProjectScoping: true,
                 closedDefectStates: ['Closed'],
                 resolvedDefectValues: [],
-                displayTestCaseResultAttachments: true
+                displayTestCaseResultAttachments: true,
+                uatTestCaseType: 'Acceptance'
             }
         },
         items: [
@@ -230,6 +231,16 @@
             });
 
             fields.push({
+                name: 'uatTestCaseType',
+                xtype: 'rallyfieldvaluecombobox',
+                fieldLabel: 'UAT Test Type',
+                labelWidth: labelWidth,
+                labelAlign: 'right',
+                model: 'TestCase',
+                field: 'Type'
+            });
+
+            fields.push({
                 name: 'displayTestCaseResultAttachments',
                 xtype: 'rallycheckboxfield',
                 labelWidth: labelWidth,
@@ -335,8 +346,10 @@
         _addStatsBanner: function(customFilters) {
 
             var closedDefectStates = this.getSetting('closedDefectStates') || [],
-                resolvedDefectStates = this.getSetting('resolvedDefectValues')|| [];
-            this.logger.log('_addStatsBanner', closedDefectStates, resolvedDefectStates);
+                resolvedDefectStates = this.getSetting('resolvedDefectValues')|| [],
+                uatTestTypes = [this.getSetting('uatTestCaseType')];
+
+            this.logger.log('_addStatsBanner', closedDefectStates, resolvedDefectStates, uatTestTypes);
             if (Ext.isString(closedDefectStates)){
                 closedDefectStates = closedDefectStates.split(',');
             }
@@ -358,6 +371,7 @@
                 customFilters: customFilters,
                 closedDefectStates: closedDefectStates,
                 resolvedDefectValues: resolvedDefectStates,
+                uatTestCaseType: uatTestTypes,
                 margin: '0 0 5px 0',
                 listeners: {
                     resize: this._resizeGridBoardToFillSpace,
