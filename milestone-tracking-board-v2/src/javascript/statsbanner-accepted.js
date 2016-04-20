@@ -23,15 +23,19 @@
                 accepted_total = 0,
                 byCount = this.byCount,
                 acceptedScheduleStates = this.scheduleStates.slice(this.scheduleStates.indexOf('Accepted'));
+
             Ext.Array.each(this.store.getRange(), function(r) {
-                var children = r.get('DirectChildrenCount') || 0;
-                if (children === 0 && r.get('_type').toLowerCase() === 'hierarchicalrequirement'){
+                if (r.get('_type').toLowerCase() === 'hierarchicalrequirement'){
                     if (!byCount) {
-                        total += r.get('PlanEstimate') || 0;
-                        if (Ext.Array.contains(acceptedScheduleStates, r.get('ScheduleState'))){
-                            accepted_total += r.get('PlanEstimate') || 0;
+                        var children = r.get('DirectChildrenCount') || 0; //kmc, we only want to exclude parent user stories when
+                        //calculating total plan estimate since that would result in doulbe counts.
+                        if (children === 0){
+                            total += r.get('PlanEstimate') || 0;
+                            if (Ext.Array.contains(acceptedScheduleStates, r.get('ScheduleState'))){
+                                accepted_total += r.get('PlanEstimate') || 0;
+                            }
                         }
-                    } else {
+                    } else {  //4/19/2016 we do want to include parent user stories here so that the number matches the test coverage...
                         total++;
                         if (Ext.Array.contains(acceptedScheduleStates, r.get('ScheduleState'))){
                             accepted_total ++;

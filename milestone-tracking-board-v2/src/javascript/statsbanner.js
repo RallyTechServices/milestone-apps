@@ -32,21 +32,23 @@
                 byCount: true,
                 title: 'Accepted User Stories',
                 unitLabel: "User Stories",
+                uniqueid: 'accepted-user-stories',
                 flex: 2,
-                tooltip: "The number of user stories explicitly associated with the Milestone that are in the Accepted (or higher) ScheduleState."
+                tooltip: "<b>Accepted User Stories</b><p>Number of Accepted (or in the higher ScheduledState) User Stories that are explicitly associated with this Milestone.</p>"
             },{
                 xtype: 'statsbanneraccepted',
                 byCount: false,
                 title: 'Accepted Points',
                 unitLabel: "Points",
+                uniqueid: 'accepted-points-user-stories',
                 flex: 2,
-                tooltip: "The summed Plan Estimates of user stories (only) explicitly associated with the Milestone that are in the Accepted (or higher) ScheduleState."
+                tooltip: "<b>Accepted Points</b> <p>Sum of Story Points tied to the Accepted (or in the higher ScheduledState) User Stories that are explicitly associated with this Milestone.</p>"
             },{
                 xtype: 'statsbannertestcoverage',
                 title: 'Test Coverage',
                 unitLabel: 'user stories',
                 flex: 2,
-                tooltip: "The number of user stories associated with the milestone that have at least 1 test case."
+                tooltip: "<b>Test Case Coverage</b> <p>Number of User Stories associated with this Milestone, linked to atleast one test case.</p>"
             },{
                 xtype: 'statsbannertestcases',
                 title: 'Test Cases Executed',
@@ -54,7 +56,12 @@
                 testCaseTypes: [],
                 flex: 2,
                 enableTooltip: true,
-                tooltip: "The number of test cases associated with the milestone's User Story.</br></br>Passed Test cases are the number of those test cases where the Last Verdict = Passed, Last Run < Milestone Target Date and every result has an attachment.  Executed test cases are the number of those test cases that have been run and all results have an attachment, but where the Last Verdict is not Passed."
+                tooltip: "<b>Test Cases Executed:</b> <p>Test Cases to be considered executed should satisfy all the below:<br/>" +
+                            "<ol><li>Every Test Case Result has a 'Verdict' (outcome)</li>" +
+                            "<li>Test Case Result date is less than or equal to the Milestone Target Date</li>" +
+                            "<li>Every Test Case result has an attachment</li>" +
+                            "<li>Test Case belongs to an User Story that is associated with this Milestone.</li>" +
+                            "</ol></p>"
             },{
                 xtype: 'statsbannertestcases',
                 title: 'UAT Tests Executed',
@@ -62,14 +69,24 @@
                 testCaseTypes: [],
                 flex: 2,
                 enableTooltip: true,
-                tooltip: 'The number of UAT test cases associated with the milestone User Stories.</br></br>Passed Test cases are the number of those test cases where the Last Verdict = Passed, Last Run < Milestone Target Date and every result has an attachment.  Executed test cases are the number of those test cases that have been run and all results have an attachment, but where the Last Verdict is not Passed.'
+                tooltip: "<b>UAT Tests Executed</b> <p>Test Cases to be considered executed should satisfy all the below:<br/>" +
+                "<ol><li>Test Type for the Test Case is 'User Acceptance Testing'</li>" +
+                "<li>Every Test Case Result has a 'Verdict' (outcome)</li>" +
+                "<li>Test Case Result date is less than or equal to the Milestone Target Date</li>" +
+                "<li>Every Test Case result has an attachment</li>" +
+                "<li>Test Case belongs to an User Story that is associated with this Milestone.</li>" +
+                "</ol></p>"
             },{
                 xtype: 'statsbannerdefects',
                 title: 'Closed Defects',
                 unitLabel: ' Defects',
                 flex: 2,
-                tooltip: "The number of defects explicitly associated with the Milestone or associated with a User Story that is explicitly associated with the Milestone or associated with a TestCase that is associated with a User Story that is explicity associated with the Milestone that are in a Closed State."
-             },{xtype: 'statsbannercollapseexpand', flex: 0}
+                tooltip: "<b>Closed Defects</b> <p>Defects in Closed State that satisfy one of the following<br/>" +
+                    "<ol><li>Defect is explicitly associated with this Milestone</li>" +
+                "<li>Associated with an User Story that is explicitly associated with this Milestone</li>" +
+                "<li>Associated with a TestCase that is associated with an User Story that is explicity associated with this Milestone</li>" +
+                "</ol></p>"
+            }
         ],
 
         constructor: function(config) {
@@ -235,10 +252,12 @@
         },
 
         _configureItems: function(items) {
+            var idx = 0;
             var defaults = {
                 flex: 1,
                 context: this.context,
                 store: this.store,
+                uniqueid: this.uniqueid || 'id-' + idx++,
                 timeboxRecord: this.timeboxRecord,
                 timeboxEndDateField: this.timeboxEndDateField,
                 scheduleStates: this.scheduleStates,

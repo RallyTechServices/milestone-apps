@@ -237,7 +237,12 @@
                 labelWidth: labelWidth,
                 labelAlign: 'right',
                 model: 'TestCase',
-                field: 'Type'
+                field: 'Type',
+                listeners: {
+                    ready: function(cb){
+                        cb.setValue(settings.uatTestCaseType);
+                    }
+                }
             });
 
             fields.push({

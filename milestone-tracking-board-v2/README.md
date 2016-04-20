@@ -11,7 +11,7 @@ Late stories are milestone user stories or defects that are either not scheduled
 
 ###Banner
 The data included in the banner calculations include work items that meet the following criteria:
-* Leaf user stories (no children) explicitly associated with the milestone
+* User stories explicitly associated with the milestone
 * Defects explicitly associated with the milestone
 * Defects directly associated with a User Story that is associated explicitly with the milestone (even though the defect may not be explicitly associated with the milestone)
 * Test Cases directly associated with a User Story this is associated explicitly with the milestone 
@@ -22,10 +22,10 @@ Note that User Stories that are decendents of a Feature or Parent User Story exp
 Number of all User Stories (excludes defects and testcases) from the dataset above where the Schedule State is Accepted or greater.
 
 ###Accepted Points
-Sum of all plan estimates from User Stories (excludes defects and testcases) where the schedule state is Accepted or greater.
+Sum of all plan estimates from User Stories with no children (excludes defects and testcases) where the schedule state is Accepted or greater.
 
 ###Test Coverage
-The percent of user stories that have at least 1 test case associated with them.  
+The percent of user stories (includes parent user stories) that have at least 1 test case associated with them.  
 
 ###Test Cases Executed
 Number of Test Cases associated with a User Story that is associated with the milestone.  In order to be considered as "executed" a test case must meet the following criteria:

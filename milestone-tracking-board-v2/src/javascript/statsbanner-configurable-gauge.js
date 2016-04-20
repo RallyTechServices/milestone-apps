@@ -1,6 +1,9 @@
 (function() {
     var Ext = window.Ext4 || window.Ext;
 
+    showTooltip = function(values){
+        console.log('showTooltip',this)
+    };
     /**
      * gauge chart for stats banner
      * abstract class
@@ -18,7 +21,7 @@
 
         tpl: [
             '<div class="expanded-widget">',
-                '<div class="stat-title"  data-qtip="{tooltip}">{title}&nbsp;<span class="icon-help"></span></div>',
+                '<div class="stat-title" id="{uniqueid}" >{title}&nbsp;<span class="icon-help"></span></div>', //data-qtip="{tooltip}"
                 '<div class="stat-metric">',
                     '<div class="metric-chart"></div>',
                     '<div class="metric-chart-text percent-offset">',
@@ -47,6 +50,7 @@
 
         _tzOffsetPromises: {},
 
+
         getTooltip: function(values){
             if (values.tooltip){
                 return values.tooltip;
@@ -54,7 +58,8 @@
             return '';
         },
         initComponent: function() {
-            Ext.QuickTips.init();
+            //Ext.QuickTips.init();
+
             //this.store.on('datachanged', this.onDataChanged, this);
             this.mon(this.store, 'datachanged', this.onDataChanged, this);
             this.callParent(arguments);
@@ -140,6 +145,22 @@
             if (this.store.getRange().length === 0) {
                 this._addEmptyChart();
             }
+            console.log('onRender', this.getEl());
+
+            this.tooltipObject = Ext.create('Rally.ui.tooltip.ToolTip', {
+                target: this.getEl(),
+                html: this.tooltip
+            });
+
+            this.getEl().on('mouseenter', function(e,t){
+                console.log('mouseenter',e,t)
+                this.tooltipObject.show();
+            }, this);
+            this.getEl().on('mouseleave', function(e,t){
+                console.log('mouseleave', e, t)
+                this.tooltipObject.hide();
+            }, this);
+
         },
         _addEmptyChart: function() {
             this._cleanupChart();
