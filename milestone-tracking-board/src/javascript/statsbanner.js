@@ -238,6 +238,14 @@
                 property: 'Requirement.Milestones',
                 value: this.timeboxRecord.get('_ref')
             });
+
+            if (this.includeFeatureUserStories){
+                filters = filters.or({
+                    property: this.featureName + ".Milestones",
+                    value: this.timeboxRecord.get('_ref')
+                });
+            }
+
             return filters;
         }
     });

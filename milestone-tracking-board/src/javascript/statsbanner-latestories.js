@@ -93,62 +93,6 @@
 
         _getRenderData: function() {
             return {activeCount: this._getLateStoriesCount()};
-        },
-
-        //_onClickLateStories: function() {
-        //    var record = this.store.getAt(0);
-        //    //record = _(this.store.getRange()).filter(function (r) { return r.data.UserStories !== ''; }).first();
-        //
-        //    var
-        //        filters = this._filterPopover(record.data),
-        //        target = this.getEl();
-        //    //targetSelector = this.targetSelector;
-        //    //
-        //    var store = Ext.create('Rally.data.wsapi.Store', {
-        //        model: 'UserStory',
-        //        fetch: ['FormattedID', 'Name', 'Feature', 'Release', 'Iteration', 'Project', 'Owner'],
-        //        filters: filters,
-        //        autoLoad: true,
-        //        pageSize: 5
-        //    });
-        //
-        //    var reloadStoreCallback;
-        //    Ext.create('Rally.apps.releasetracking.statsbanner.popover.LateStories', {
-        //        target: target,
-        //        autoShow: false,
-        //        record: record,
-        //        //filters: filters,
-        //        store: store,
-        //        headerTitle: 'User Stories Assigned to Later Iterations',
-        //        width: 800
-        //    }).show();
-        //},
-        //
-        //_filterPopover: function(record) {
-        //    return [
-        //        {
-        //            property: 'Feature.Release.Name',
-        //            operator: '=',
-        //            value: record.Release.Name
-        //        },
-        //        {
-        //            property: 'DirectChildrenCount',
-        //            operator: '=',
-        //            value: 0
-        //        },
-        //        Rally.data.wsapi.Filter.or([
-        //            {
-        //                property: 'Iteration.EndDate',
-        //                operator: '>',
-        //                value: record.Release.ReleaseDate
-        //            },
-        //            {
-        //                property: 'Release.ReleaseDate',
-        //                operator: '>',
-        //                value: record.Release.ReleaseDate
-        //            }
-        //        ])
-        //    ];
-        //}
+        }
     });
 })();

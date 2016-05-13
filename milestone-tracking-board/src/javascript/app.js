@@ -16,7 +16,8 @@
             defaultSettings: {
                 ignoreProjectScoping: true,
                 closedDefectStates: ['Closed'],
-                cancelledDefectStates: []
+                cancelledDefectStates: [],
+                includeFeatureUserStories: false
             }
         },
         items: [
@@ -163,6 +164,8 @@
             fields.push({
                 name: 'ignoreProjectScoping',
                 xtype: 'rallycheckboxfield',
+                labelWidth: 200,
+                labelAlign: 'right',
                 label: 'Show Children in any Project'
             });
 
@@ -170,7 +173,7 @@
                 name: 'closedDefectStates',
                 xtype: 'rallyfieldvaluecombobox',
                 width: 400,
-                labelWidth: 150,
+                labelWidth: 200,
                 labelAlign: 'right',
                 multiSelect: true,
                 fieldLabel: 'Inactive Defect States',
@@ -188,7 +191,7 @@
                 name: 'cancelledDefectStates',
                 xtype: 'rallyfieldvaluecombobox',
                 width: 400,
-                labelWidth: 150,
+                labelWidth: 200,
                 labelAlign: 'right',
                 multiSelect: true,
                 fieldLabel: 'Cancelled Defect States',
@@ -201,6 +204,15 @@
                     }
                 }
             });
+
+            fields.push({
+                xtype: 'rallycheckboxfield',
+                fieldLabel: 'Include derived User Stories',
+                labelWidth: 200,
+                labelAlign: 'right',
+                boxLabel: "<i>Include leaf User Stories on Milestone Portfolio Items that are not explicitly associated with the release.</i>",
+                name: 'includeFeatureUserStories'
+            });
             return fields;
         },
         _getFilters: function(){
@@ -211,6 +223,7 @@
                     value: this._getMilestoneRef()
                 });
             }
+
             return filters;
         },
         _getMilestoneRef: function(){
@@ -250,6 +263,12 @@
             this.down('#late-stories').update({latestories: latestories.length});
             this.lateStories = latestories;
         },
+        getIncludeFeatureUserStories: function(){
+            return (this.getSetting('includeFeatureUserStories') === 'true' || this.getSetting('includeFeatureUserStories') === true) || false;
+        },
+        getFeatureName: function(){
+            return "Feature";
+        },
         _addStatsBanner: function() {
 
             this.remove('statsBanner');
@@ -262,6 +281,8 @@
                 timeboxRecord: this._getTimeBoxRecord(),
                 timeboxEndDateField: 'TargetDate',
                 filters: this._getFilters(),
+                includeFeatureUserStories: this.getIncludeFeatureUserStories(),
+                featureName: this.getFeatureName(),
                 closedDefectStates: this.getSetting('closedDefectStates'),
                 cancelledDefectStates: this.getSetting('cancelledDefectStates'),
                 margin: '0 0 5px 0',
