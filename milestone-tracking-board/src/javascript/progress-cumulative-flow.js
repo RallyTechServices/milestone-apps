@@ -35,14 +35,27 @@
         _getStoreConfig: function(){
             var milestone_oid = this.timeboxRecord.get('ObjectID');
 
+            var find = {
+                _TypeHierarchy: { '$in' : [ 'HierarchicalRequirement', 'Defect' ] },
+                Children: null,
+                _ProjectHierarchy: this.context.getProject().ObjectID,
+                //_ValidFrom: {'$gt': Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(), 'day', -30)) }
+            };
+
+            //if (this.includeFeatureUserStories){
+            //
+            //    find["$or"] = [{
+            //        "_ItemHierarchy": {$in: piOids}
+            //    },{
+            //        Milestones: {$in: [milestone_oid]}
+            //    }]
+            //} else {
+                find["Milestones"] = {$in: [milestone_oid]};
+//            }
+
+
             return {
-                find: {
-                    _TypeHierarchy: { '$in' : [ 'HierarchicalRequirement', 'Defect' ] },
-                    Children: null,
-                    Milestones: {$in: [milestone_oid]},
-                    _ProjectHierarchy: this.context.getProject().ObjectID,
-                    //_ValidFrom: {'$gt': Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(), 'day', -30)) }
-                },
+                find: find,
                 fetch: ['ScheduleState'],
                 hydrate: ['ScheduleState'],
                 sort: {

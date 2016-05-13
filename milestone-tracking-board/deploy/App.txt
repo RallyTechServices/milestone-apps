@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sat Feb 13 2016 16:54:23 GMT-0700 (MST) -->
+    <!--  Build Date: Fri May 13 2016 15:18:01 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sat Feb 13 2016 16:54:23 GMT-0700 (MST)";
-        var CHECKSUM = 369943496961;
+        var APP_BUILD_DATE = "Fri May 13 2016 15:18:01 GMT-0600 (MDT)";
+        var CHECKSUM = 369781745735;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -873,14 +873,27 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
         _getStoreConfig: function(){
             var milestone_oid = this.timeboxRecord.get('ObjectID');
 
+            var find = {
+                _TypeHierarchy: { '$in' : [ 'HierarchicalRequirement', 'Defect' ] },
+                Children: null,
+                _ProjectHierarchy: this.context.getProject().ObjectID,
+                //_ValidFrom: {'$gt': Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(), 'day', -30)) }
+            };
+
+            //if (this.includeFeatureUserStories){
+            //
+            //    find["$or"] = [{
+            //        "_ItemHierarchy": {$in: piOids}
+            //    },{
+            //        Milestones: {$in: [milestone_oid]}
+            //    }]
+            //} else {
+                find["Milestones"] = {$in: [milestone_oid]};
+//            }
+
+
             return {
-                find: {
-                    _TypeHierarchy: { '$in' : [ 'HierarchicalRequirement', 'Defect' ] },
-                    Children: null,
-                    Milestones: {$in: [milestone_oid]},
-                    _ProjectHierarchy: this.context.getProject().ObjectID,
-                    //_ValidFrom: {'$gt': Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(), 'day', -30)) }
-                },
+                find: find,
                 fetch: ['ScheduleState'],
                 hydrate: ['ScheduleState'],
                 sort: {
@@ -1620,6 +1633,14 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
                 property: 'Requirement.Milestones',
                 value: this.timeboxRecord.get('_ref')
             });
+
+            if (this.includeFeatureUserStories){
+                filters = filters.or({
+                    property: this.featureName + ".Milestones",
+                    value: this.timeboxRecord.get('_ref')
+                });
+            }
+
             return filters;
         }
     });
@@ -2607,63 +2628,7 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
 
         _getRenderData: function() {
             return {activeCount: this._getLateStoriesCount()};
-        },
-
-        //_onClickLateStories: function() {
-        //    var record = this.store.getAt(0);
-        //    //record = _(this.store.getRange()).filter(function (r) { return r.data.UserStories !== ''; }).first();
-        //
-        //    var
-        //        filters = this._filterPopover(record.data),
-        //        target = this.getEl();
-        //    //targetSelector = this.targetSelector;
-        //    //
-        //    var store = Ext.create('Rally.data.wsapi.Store', {
-        //        model: 'UserStory',
-        //        fetch: ['FormattedID', 'Name', 'Feature', 'Release', 'Iteration', 'Project', 'Owner'],
-        //        filters: filters,
-        //        autoLoad: true,
-        //        pageSize: 5
-        //    });
-        //
-        //    var reloadStoreCallback;
-        //    Ext.create('Rally.apps.releasetracking.statsbanner.popover.LateStories', {
-        //        target: target,
-        //        autoShow: false,
-        //        record: record,
-        //        //filters: filters,
-        //        store: store,
-        //        headerTitle: 'User Stories Assigned to Later Iterations',
-        //        width: 800
-        //    }).show();
-        //},
-        //
-        //_filterPopover: function(record) {
-        //    return [
-        //        {
-        //            property: 'Feature.Release.Name',
-        //            operator: '=',
-        //            value: record.Release.Name
-        //        },
-        //        {
-        //            property: 'DirectChildrenCount',
-        //            operator: '=',
-        //            value: 0
-        //        },
-        //        Rally.data.wsapi.Filter.or([
-        //            {
-        //                property: 'Iteration.EndDate',
-        //                operator: '>',
-        //                value: record.Release.ReleaseDate
-        //            },
-        //            {
-        //                property: 'Release.ReleaseDate',
-        //                operator: '>',
-        //                value: record.Release.ReleaseDate
-        //            }
-        //        ])
-        //    ];
-        //}
+        }
     });
 })();
 (function() {
@@ -3421,14 +3386,27 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
         _getStoreConfig: function(){
             var milestone_oid = this.timeboxRecord.get('ObjectID');
 
+            var find = {
+                _TypeHierarchy: { '$in' : [ 'HierarchicalRequirement', 'Defect' ] },
+                Children: null,
+                _ProjectHierarchy: this.context.getProject().ObjectID,
+                //_ValidFrom: {'$gt': Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(), 'day', -30)) }
+            };
+
+            //if (this.includeFeatureUserStories){
+            //
+            //    find["$or"] = [{
+            //        "_ItemHierarchy": {$in: piOids}
+            //    },{
+            //        Milestones: {$in: [milestone_oid]}
+            //    }]
+            //} else {
+                find["Milestones"] = {$in: [milestone_oid]};
+//            }
+
+
             return {
-                find: {
-                    _TypeHierarchy: { '$in' : [ 'HierarchicalRequirement', 'Defect' ] },
-                    Children: null,
-                    Milestones: {$in: [milestone_oid]},
-                    _ProjectHierarchy: this.context.getProject().ObjectID,
-                    //_ValidFrom: {'$gt': Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(), 'day', -30)) }
-                },
+                find: find,
                 fetch: ['ScheduleState'],
                 hydrate: ['ScheduleState'],
                 sort: {
@@ -3566,7 +3544,8 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
             defaultSettings: {
                 ignoreProjectScoping: true,
                 closedDefectStates: ['Closed'],
-                cancelledDefectStates: []
+                cancelledDefectStates: [],
+                includeFeatureUserStories: false
             }
         },
         items: [
@@ -3713,6 +3692,8 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
             fields.push({
                 name: 'ignoreProjectScoping',
                 xtype: 'rallycheckboxfield',
+                labelWidth: 200,
+                labelAlign: 'right',
                 label: 'Show Children in any Project'
             });
 
@@ -3720,7 +3701,7 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
                 name: 'closedDefectStates',
                 xtype: 'rallyfieldvaluecombobox',
                 width: 400,
-                labelWidth: 150,
+                labelWidth: 200,
                 labelAlign: 'right',
                 multiSelect: true,
                 fieldLabel: 'Inactive Defect States',
@@ -3738,7 +3719,7 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
                 name: 'cancelledDefectStates',
                 xtype: 'rallyfieldvaluecombobox',
                 width: 400,
-                labelWidth: 150,
+                labelWidth: 200,
                 labelAlign: 'right',
                 multiSelect: true,
                 fieldLabel: 'Cancelled Defect States',
@@ -3751,6 +3732,15 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
                     }
                 }
             });
+
+            fields.push({
+                xtype: 'rallycheckboxfield',
+                fieldLabel: 'Include derived User Stories',
+                labelWidth: 200,
+                labelAlign: 'right',
+                boxLabel: "<i>Include leaf User Stories on Milestone Portfolio Items that are not explicitly associated with the release.</i>",
+                name: 'includeFeatureUserStories'
+            });
             return fields;
         },
         _getFilters: function(){
@@ -3761,6 +3751,7 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
                     value: this._getMilestoneRef()
                 });
             }
+
             return filters;
         },
         _getMilestoneRef: function(){
@@ -3800,6 +3791,12 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
             this.down('#late-stories').update({latestories: latestories.length});
             this.lateStories = latestories;
         },
+        getIncludeFeatureUserStories: function(){
+            return (this.getSetting('includeFeatureUserStories') === 'true' || this.getSetting('includeFeatureUserStories') === true) || false;
+        },
+        getFeatureName: function(){
+            return "Feature";
+        },
         _addStatsBanner: function() {
 
             this.remove('statsBanner');
@@ -3812,6 +3809,8 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
                 timeboxRecord: this._getTimeBoxRecord(),
                 timeboxEndDateField: 'TargetDate',
                 filters: this._getFilters(),
+                includeFeatureUserStories: this.getIncludeFeatureUserStories(),
+                featureName: this.getFeatureName(),
                 closedDefectStates: this.getSetting('closedDefectStates'),
                 cancelledDefectStates: this.getSetting('cancelledDefectStates'),
                 margin: '0 0 5px 0',

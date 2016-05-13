@@ -33,3 +33,14 @@ Number of Defects from the above dataset where the State != Closed
 ###Test Cases Passed
 Number of Test Cases from the above dataset where the Last Verdict = Passed
 
+###Defect Density
+Total Number of Defects – Cancelled defects)/ Total Number of Test Cases Executed.  Cancelled defect states are defined in the App settings.
+
+
+###App Configuration
+
+![ScreenShot](/images/milestone-tracking-board-settings.png)
+
+Inactive Defect States - determines which defect states are not considered "Active"
+Cancelled Defect States - Used in the calculation of Defect Density
+Include Derived User Stories - If checked, the banner calculations will include user stories that are not associated explicitly with the milestone, but children of a feature explicitly associated with the milestone.  
