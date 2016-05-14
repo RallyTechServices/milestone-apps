@@ -33,29 +33,19 @@
 
         },
         _getStoreConfig: function(){
-            var milestone_oid = this.timeboxRecord.get('ObjectID');
+            var oids = [];
 
-            var find = {
-                _TypeHierarchy: { '$in' : [ 'HierarchicalRequirement', 'Defect' ] },
-                Children: null,
-                _ProjectHierarchy: this.context.getProject().ObjectID,
-                //_ValidFrom: {'$gt': Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(), 'day', -30)) }
-            };
-
-            //if (this.includeFeatureUserStories){
-            //
-            //    find["$or"] = [{
-            //        "_ItemHierarchy": {$in: piOids}
-            //    },{
-            //        Milestones: {$in: [milestone_oid]}
-            //    }]
-            //} else {
-                find["Milestones"] = {$in: [milestone_oid]};
-//            }
-
+            Ext.Array.each(this.store.getRange(), function(r){
+                var children = r.get('DirectChildrenCount') || 0;
+                if (children === 0 || r.get('_type') === 'defect'){
+                    oids.push(r.get("ObjectID"));
+                }
+            });
 
             return {
-                find: find,
+                find: {
+                    ObjectID: {$in: oids}
+                },
                 fetch: ['ScheduleState'],
                 hydrate: ['ScheduleState'],
                 sort: {
@@ -154,12 +144,23 @@
                     title: {text: null},
                     xAxis: {
                         tickmarkPlacement: 'on',
-                        tickInterval: 1,
                         labels: {
                             formatter: function(){
                                 return Rally.util.DateTime.format(new Date(this.value), 'MMM-dd');
                             },
                             rotation: 75
+                        },
+                        tickPositioner: function () {
+                            var positions = [],
+                                tick = Math.floor(this.dataMin),
+                                increment = Math.ceil((this.dataMax - this.dataMin) / 10);
+
+                            if (this.dataMax !== null && this.dataMin !== null) {
+                                for (tick; tick - increment <= this.dataMax; tick += increment) {
+                                    positions.push(tick);
+                                }
+                            }
+                            return positions;
                         }
                     },
                     yAxis: [{

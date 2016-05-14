@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri May 13 2016 15:18:01 GMT-0600 (MDT) -->
+    <!--  Build Date: Fri May 13 2016 17:58:47 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri May 13 2016 15:18:01 GMT-0600 (MDT)";
-        var CHECKSUM = 369781745735;
+        var APP_BUILD_DATE = "Fri May 13 2016 17:58:47 GMT-0600 (MDT)";
+        var CHECKSUM = 362616293985;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -871,29 +871,19 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
 
         },
         _getStoreConfig: function(){
-            var milestone_oid = this.timeboxRecord.get('ObjectID');
+            var oids = [];
 
-            var find = {
-                _TypeHierarchy: { '$in' : [ 'HierarchicalRequirement', 'Defect' ] },
-                Children: null,
-                _ProjectHierarchy: this.context.getProject().ObjectID,
-                //_ValidFrom: {'$gt': Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(), 'day', -30)) }
-            };
-
-            //if (this.includeFeatureUserStories){
-            //
-            //    find["$or"] = [{
-            //        "_ItemHierarchy": {$in: piOids}
-            //    },{
-            //        Milestones: {$in: [milestone_oid]}
-            //    }]
-            //} else {
-                find["Milestones"] = {$in: [milestone_oid]};
-//            }
-
+            Ext.Array.each(this.store.getRange(), function(r){
+                var children = r.get('DirectChildrenCount') || 0;
+                if (children === 0 || r.get('_type') === 'defect'){
+                    oids.push(r.get("ObjectID"));
+                }
+            });
 
             return {
-                find: find,
+                find: {
+                    ObjectID: {$in: oids}
+                },
                 fetch: ['ScheduleState'],
                 hydrate: ['ScheduleState'],
                 sort: {
@@ -992,12 +982,23 @@ Ext.define('MilestoneTrackingApp.CFDCalculator', {
                     title: {text: null},
                     xAxis: {
                         tickmarkPlacement: 'on',
-                        tickInterval: 1,
                         labels: {
                             formatter: function(){
                                 return Rally.util.DateTime.format(new Date(this.value), 'MMM-dd');
                             },
                             rotation: 75
+                        },
+                        tickPositioner: function () {
+                            var positions = [],
+                                tick = Math.floor(this.dataMin),
+                                increment = Math.ceil((this.dataMax - this.dataMin) / 10);
+
+                            if (this.dataMax !== null && this.dataMin !== null) {
+                                for (tick; tick - increment <= this.dataMax; tick += increment) {
+                                    positions.push(tick);
+                                }
+                            }
+                            return positions;
                         }
                     },
                     yAxis: [{
@@ -2917,57 +2918,15 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
                 xtype: 'statsbannercumulativeflowchart',
                 width: chartWidth,
                 height: chartHeight,
+                store: this.store,
                 timeboxRecord: this.timeboxRecord,
                 scheduleStates: this.scheduleStates,
                 context: this.context
             });
             this.title = this.chart.displayTitle;
-            //this.carousel = this.add({
-            //    xtype: 'rallycarousel',
-            //    showDots: false,
-            //    enableAnimations: false,
-            //    carouselItems: [
-            //        {
-            //            xtype: 'statsbannercumulativeflowchart',
-            //            width: chartWidth,
-            //            height: chartHeight,
-            //            timeboxRecord: this.timeboxRecord,
-            //            scheduleStates: this.scheduleStates,
-            //            context: this.context
-            //        }
-            //        //{
-            //        //xtype: 'statsbannerburndownchart',
-            //        //width: chartWidth,
-            //        //height: chartHeight,
-            //        //context: this.context,
-            //        //store: this.store
-            //        //},
-            //        //{
-            //        //xtype: 'statsbannercumulativeflowchart',
-            //        //width: chartWidth,
-            //        //height: chartHeight,
-            //        //context: this.context,
-            //        //store: this.store
-            //        //}
-            //    ],
-            //    startingIndex: this.startingIndex,
-            //    listeners: {
-            //        carouselmove: {
-            //            fn: this._onCarouselMove,
-            //            scope: this
-            //        },
-            //        afterlayout: {
-            //            fn: this._afterLayout,
-            //            single: true,
-            //            scope: this
-            //        }
-            //    }
-            //});
+
         },
 
-        //_toggleButtonClick: function(toggleBtnContainer, buttonIndex){
-        //    this._setChart(buttonIndex);
-        //},
 
         _afterLayout: function(){
             Ext.defer(this._setChart, 10, this, [this.startingIndex]);
@@ -3384,29 +3343,19 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
 
         },
         _getStoreConfig: function(){
-            var milestone_oid = this.timeboxRecord.get('ObjectID');
+            var oids = [];
 
-            var find = {
-                _TypeHierarchy: { '$in' : [ 'HierarchicalRequirement', 'Defect' ] },
-                Children: null,
-                _ProjectHierarchy: this.context.getProject().ObjectID,
-                //_ValidFrom: {'$gt': Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(), 'day', -30)) }
-            };
-
-            //if (this.includeFeatureUserStories){
-            //
-            //    find["$or"] = [{
-            //        "_ItemHierarchy": {$in: piOids}
-            //    },{
-            //        Milestones: {$in: [milestone_oid]}
-            //    }]
-            //} else {
-                find["Milestones"] = {$in: [milestone_oid]};
-//            }
-
+            Ext.Array.each(this.store.getRange(), function(r){
+                var children = r.get('DirectChildrenCount') || 0;
+                if (children === 0 || r.get('_type') === 'defect'){
+                    oids.push(r.get("ObjectID"));
+                }
+            });
 
             return {
-                find: find,
+                find: {
+                    ObjectID: {$in: oids}
+                },
                 fetch: ['ScheduleState'],
                 hydrate: ['ScheduleState'],
                 sort: {
@@ -3505,12 +3454,23 @@ Ext.override(Rally.ui.grid.data.NodeInterface, {
                     title: {text: null},
                     xAxis: {
                         tickmarkPlacement: 'on',
-                        tickInterval: 1,
                         labels: {
                             formatter: function(){
                                 return Rally.util.DateTime.format(new Date(this.value), 'MMM-dd');
                             },
                             rotation: 75
+                        },
+                        tickPositioner: function () {
+                            var positions = [],
+                                tick = Math.floor(this.dataMin),
+                                increment = Math.ceil((this.dataMax - this.dataMin) / 10);
+
+                            if (this.dataMax !== null && this.dataMin !== null) {
+                                for (tick; tick - increment <= this.dataMax; tick += increment) {
+                                    positions.push(tick);
+                                }
+                            }
+                            return positions;
                         }
                     },
                     yAxis: [{
