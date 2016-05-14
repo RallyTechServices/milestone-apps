@@ -44,3 +44,6 @@ Total Number of Defects – Cancelled defects)/ Total Number of Test Cases Execu
 Inactive Defect States - determines which defect states are not considered "Active"
 Cancelled Defect States - Used in the calculation of Defect Density
 Include Derived User Stories - If checked, the banner calculations will include user stories that are not associated explicitly with the milestone, but children of a feature explicitly associated with the milestone.  
+
+Cumulative Flow chart on the banner is calculated using the same work items included in the banner calculations and history is shown for these items, not for the milestone.  Thus
+the cumulative flow chart does not show scope change in the milestone.  
