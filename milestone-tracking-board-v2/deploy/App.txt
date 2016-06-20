@@ -3,14 +3,14 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Apr 19 2016 21:01:12 GMT-0600 (MDT) -->
+    <!--  Build Date: Mon Jun 20 2016 15:59:18 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Apr 19 2016 21:01:12 GMT-0600 (MDT)";
-        var CHECKSUM = 236053140110;
+        var APP_BUILD_DATE = "Mon Jun 20 2016 15:59:18 GMT-0600 (MDT)";
+        var CHECKSUM = 247269249909;
     </script>
     
-    <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
+    <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
 
     <script type="text/javascript">
         Rally.onReady(function() {
@@ -799,6 +799,44 @@ Ext.override(Rally.ui.combobox.FieldValueComboBox,{
             });
     }
 });
+
+
+    ///**
+    // * @private
+    // *
+    // * Maps parent/child properties of hierarchical collection attributes.
+    // */
+    //Ext.override(Rally.data.wsapi.ParentChildMapper, {
+    //
+    //    constructor: function() {
+    //        this.parentChildTypeMap = {
+    //            hierarchicalrequirement: [
+    //                {typePath: 'defect', collectionName: 'Defects', parentField: 'Requirement'},
+    //                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
+    //                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'},
+    //                {typePath: 'hierarchicalrequirement', collectionName: 'Children', parentField: 'Parent'}
+    //            ],
+    //            defect: [
+    //                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
+    //                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
+    //            ],
+    //            defectsuite: [
+    //                {typePath: 'defect', collectionName: 'Defects', parentField: 'DefectSuites'},
+    //                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
+    //                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
+    //            ],
+    //            testcase: [
+    //                {typePath: 'defect', collectionName: 'Defects', parentField: 'TestCase'}
+    //            ],
+    //            testset: [
+    //                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
+    //                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'TestSets'}
+    //            ]
+    //        };
+    //        console.log('parentChildTypeMap', this.parentChildTypeMap);
+    //    }
+    //
+    //});
 (function() {
     var Ext = window.Ext4 || window.Ext;
 
@@ -2485,7 +2523,7 @@ Ext.override(Rally.ui.combobox.FieldValueComboBox,{
         },
         _getModelNames: function () {
             this.logger.log('_getModelNames',this.sModelNames);
-            return this.sModelNames.concat(['HierarchicalRequirement','Defect']);
+            return this.sModelNames.concat(['HierarchicalRequirement','Defect','TestCase']);
         },
 
         getSettingsFields: function () {
@@ -2568,11 +2606,27 @@ Ext.override(Rally.ui.combobox.FieldValueComboBox,{
         _getFilters: function(){
             var filters = [];
             if (this._getTimeBoxRecord()){
-                filters = Rally.data.wsapi.Filter({
-                    property: "Milestones",
-                    value: this._getMilestoneRef()
-                });
+                var milestone = this._getTimeBoxRecord();
+                //return Rally.data.wsapi.Filter({
+                //    property: 'Milestones',
+                //    value: milestone
+                //});
+
+                filters =  Rally.data.wsapi.Filter.or([{
+                    property: "Milestones.FormattedID",
+                    operator: 'contains',
+                    value: milestone.get('FormattedID')
+                },{
+                    property: 'Requirement.Milestones.FormattedID',
+                    operator: 'contains',
+                    value:  milestone.get('FormattedID')
+                },{
+                    property: 'WorkProduct.Milestones.FormattedID',
+                    operator: 'contains',
+                    value:  milestone.get('FormattedID')
+                }]);
             }
+            this.logger.log('_getFilters', filters.toString());
             return filters;
         },
         _getMilestoneRef: function(){
@@ -2599,7 +2653,7 @@ Ext.override(Rally.ui.combobox.FieldValueComboBox,{
                     enableHierarchy: true
                 };
 
-            //config.filters = this._getFilters();
+            config.filters = this._getFilters();
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(config).then({
                 success: function (store) {
                     store.on('load', this._loadAttachmentInformation, this);
@@ -2707,9 +2761,7 @@ Ext.override(Rally.ui.combobox.FieldValueComboBox,{
                 plugins: this._getGridBoardPlugins(),
                 modelNames: this._getModelNames(),
                 gridConfig: this._getGridConfig(gridStore),
-                storeConfig: {
-                    filters: this._getFilters()
-                },
+
                 addNewPluginConfig: {
                     style: {
                         'float': 'left',
@@ -2984,6 +3036,9 @@ Ext.override(Rally.ui.combobox.FieldValueComboBox,{
                 defaultColumnCfgs: this._getGridColumns(),
                 plugins: [],
                 stateId: stateId,
+                storeConfig: {
+                    filters: this._getFilters()
+                },
                 stateful: true,
                 showPagingToolbar: true
             };

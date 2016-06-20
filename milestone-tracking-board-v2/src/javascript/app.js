@@ -175,7 +175,7 @@
         },
         _getModelNames: function () {
             this.logger.log('_getModelNames',this.sModelNames);
-            return this.sModelNames.concat(['HierarchicalRequirement','Defect']);
+            return this.sModelNames.concat(['HierarchicalRequirement','Defect','TestCase']);
         },
 
         getSettingsFields: function () {
@@ -258,11 +258,27 @@
         _getFilters: function(){
             var filters = [];
             if (this._getTimeBoxRecord()){
-                filters = Rally.data.wsapi.Filter({
-                    property: "Milestones",
-                    value: this._getMilestoneRef()
-                });
+                var milestone = this._getTimeBoxRecord();
+                //return Rally.data.wsapi.Filter({
+                //    property: 'Milestones',
+                //    value: milestone
+                //});
+
+                filters =  Rally.data.wsapi.Filter.or([{
+                    property: "Milestones.FormattedID",
+                    operator: 'contains',
+                    value: milestone.get('FormattedID')
+                },{
+                    property: 'Requirement.Milestones.FormattedID',
+                    operator: 'contains',
+                    value:  milestone.get('FormattedID')
+                },{
+                    property: 'WorkProduct.Milestones.FormattedID',
+                    operator: 'contains',
+                    value:  milestone.get('FormattedID')
+                }]);
             }
+            this.logger.log('_getFilters', filters.toString());
             return filters;
         },
         _getMilestoneRef: function(){
@@ -289,7 +305,7 @@
                     enableHierarchy: true
                 };
 
-            //config.filters = this._getFilters();
+            config.filters = this._getFilters();
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(config).then({
                 success: function (store) {
                     store.on('load', this._loadAttachmentInformation, this);
@@ -397,9 +413,7 @@
                 plugins: this._getGridBoardPlugins(),
                 modelNames: this._getModelNames(),
                 gridConfig: this._getGridConfig(gridStore),
-                storeConfig: {
-                    filters: this._getFilters()
-                },
+
                 addNewPluginConfig: {
                     style: {
                         'float': 'left',
@@ -674,6 +688,9 @@
                 defaultColumnCfgs: this._getGridColumns(),
                 plugins: [],
                 stateId: stateId,
+                storeConfig: {
+                    filters: this._getFilters()
+                },
                 stateful: true,
                 showPagingToolbar: true
             };
