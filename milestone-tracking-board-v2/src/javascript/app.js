@@ -512,7 +512,7 @@
                     {
                         text: 'Export...',
                         handler: function() {
-                            window.location = Rally.ui.grid.GridCsvExport.buildCsvExportUrl(
+                            window.location = Rally.ui.gridboard.Export.buildCsvExportUrl(
                                 this.down('rallygridboard').getGridOrBoard());
                         },
                         scope: this
