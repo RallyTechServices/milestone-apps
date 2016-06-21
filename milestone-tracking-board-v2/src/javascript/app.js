@@ -792,13 +792,9 @@
             return typeof(this.getAppId()) == 'undefined';
         },
         onSettingsUpdate: function(settings){
+            Ext.apply(this.settings, settings);
             this.logger.log('onSettingsUpdate',this, settings);
             this._addComponents();
-        },
-        _onSettingsSaved: function(settings) {
-            Ext.apply(this.settings, settings);
-            this._hideSettings();
-            this.onSettingsUpdate(settings);
-        },
+        }
     });
 })();
