@@ -349,40 +349,58 @@ Ext.override(Rally.ui.combobox.FieldValueComboBox,{
     }
 });
 
+Ext.override(Rally.ui.grid.FieldColumnFactory, {
+        _blackListedFields: {
+            task: [
+//                'Attachments',
+                'BuildDefinitions',
+                'Changesets',
+                'ObjectID',
+                'ObjectUUID',
+                'RevisionHistory',
+                'SchemaVersion',
+                'Subscription',
+                'TaskIndex',
+                'VersionId',
+                'Workspace'
+            ],
 
-    ///**
-    // * @private
-    // *
-    // * Maps parent/child properties of hierarchical collection attributes.
-    // */
-    //Ext.override(Rally.data.wsapi.ParentChildMapper, {
-    //
-    //    constructor: function() {
-    //        this.parentChildTypeMap = {
-    //            hierarchicalrequirement: [
-    //                {typePath: 'defect', collectionName: 'Defects', parentField: 'Requirement'},
-    //                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
-    //                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'},
-    //                {typePath: 'hierarchicalrequirement', collectionName: 'Children', parentField: 'Parent'}
-    //            ],
-    //            defect: [
-    //                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
-    //                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
-    //            ],
-    //            defectsuite: [
-    //                {typePath: 'defect', collectionName: 'Defects', parentField: 'DefectSuites'},
-    //                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
-    //                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'WorkProduct'}
-    //            ],
-    //            testcase: [
-    //                {typePath: 'defect', collectionName: 'Defects', parentField: 'TestCase'}
-    //            ],
-    //            testset: [
-    //                {typePath: 'task', collectionName: 'Tasks', parentField: 'WorkProduct'},
-    //                {typePath: 'testcase', collectionName: 'TestCases', parentField: 'TestSets'}
-    //            ]
-    //        };
-    //        console.log('parentChildTypeMap', this.parentChildTypeMap);
-    //    }
-    //
-    //});
+            defaultBlackList: [
+                'Actuals',
+  //              'Attachments',
+                'Blocker',
+                'BuildDefinitions',
+                'Changesets',
+                'Children',
+                'ClosedDefectCount',
+                'Editors',
+                'GrossEstimateConversionRatio',
+                'Iterations',
+                'LastResult',
+                'LandingPage',
+                'ObjectID',
+                'ObjectUUID',
+                'PassingTestCaseCount',
+                'PortfolioItem',
+                'Predecessors',
+                'Releases',
+                'RevisionHistory',
+                'ScheduleStatePrefix',
+                'SchemaVersion',
+                'ShortDisplayName',
+                'Subscription',
+                'Successors',
+                'TaskIndex',
+                'TeamMembers',
+                'TeamMemberships',
+                'TestCaseCount',
+                'TotalDefectCount',
+                'UserIterationCapacities',
+                'UserPermissions',
+                'UserProfile',
+                'VersionId',
+                'Workspace'
+            ]
+        }
+
+    });
