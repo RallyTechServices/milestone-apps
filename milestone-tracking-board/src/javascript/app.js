@@ -1,6 +1,6 @@
 (function () {
     var Ext = window.Ext4 || window.Ext;
-
+    
     /**
      * Iteration Tracking Board App
      * The Iteration Tracking Board can be used to visualize and manage your User Stories and Defects within an Iteration.
@@ -406,11 +406,9 @@
                 menuItems: [
                     {
                         text: 'Export...',
-                        handler: function() {
-                            window.location = Rally.ui.grid.GridCsvExport.buildCsvExportUrl(
-                                this.down('rallygridboard').getGridOrBoard());
-                        },
-                        scope: this
+                        handler: this._export,
+                        scope: this,
+                        childModels: ['hierarchicalrequirement','task','defect','testcase']
                     }
                 ],
                 buttonConfig: {
@@ -662,6 +660,115 @@
                 }
             ];
         },
+        
+        _getExportColumns: function(){
+            var grid = this.down('rallygridboard').getGridOrBoard();
+            if (grid){
+                return _.filter(grid.columns, function(item){ return (item.dataIndex && item.dataIndex != "DragAndDropRank"); });
+            }
+            return [];
+        },
+        
+        _getExportFilters: function(){
+            var filters = this._getFilters();
+            
+            if ( ! Ext.isFunction(filters.and) ) {
+                if ( Ext.isArray(filters) ) {
+                    filters = Rally.data.wsapi.Filter.and(filters);
+                } else {
+                    filters = Ext.create('Rally.data.wsapi.Filter',filters);
+                }
+            }
+            return filters; 
+            
+//            var grid = this.down('rallygridboard'),
+//                filters = [],
+//                query = this.getSetting('query');
+//    
+//            if (grid.currentCustomFilter && grid.currentCustomFilter.filters){
+//                filters = grid.currentCustomFilter.filters;
+//            }
+//            if (query){
+//                if (filters && filters.length > 0){
+//                    return filters.and(filters, Rally.data.wsapi.Filter.fromQueryString(query));
+//                } else {
+//                    return Rally.data.wsapi.Filter.fromQueryString(query);
+//                }
+//            }
+//            return filters;
+        },
+        
+        _getExportFetch: function(){
+            var fetch =  _.pluck(this._getExportColumns(), 'dataIndex');
+            if (Ext.Array.contains(fetch, 'TaskActualTotal')){
+                fetch.push('Actuals');
+            }
+            return fetch;
+        },
+
+        _showError: function(msg){
+            Rally.ui.notify.Notifier.showError({message: msg});
+        },
+        _showStatus: function(message){
+            this.logger.log('_showstatus', message, this);
+            if (message) {
+               Rally.ui.notify.Notifier.showStatus({
+                    message: message,
+                    showForever: true,
+                    closable: false,
+                    animateShowHide: false
+                });
+            } else {
+                Rally.ui.notify.Notifier.hide();
+            }
+        },
+        
+        _export: function(args){
+    
+            var columns = this._getExportColumns(),
+                fetch = this._getExportFetch(),
+                filters = this._getExportFilters(),
+                modelNames = this._getModelNames(),
+                childModels = args.childModels;
+    
+            this.fetchPortfolioItemTypes().then({
+                scope: this,
+                success: function(pi_types) {
+                    this.portfolioItemTypes = pi_types;
+                    
+                    this.logger.log('_export', fetch, args, columns, childModels);
+                    this.logger.log('_export Filters:', filters, filters.toString());
+            
+                    var exporter = Ext.create('Rally.technicalservices.HierarchyExporter', {
+                        fileName: 'milestone-tracking-export.csv',
+                        columns: columns,
+                        portfolioItemTypeObjects: this.portfolioItemTypes
+            
+                    });
+                    exporter.on('exportupdate', this._showStatus, this);
+                    exporter.on('exporterror', this._showError, this);
+                    exporter.on('exportcomplete', this._showStatus, this);
+            
+                    var hierarchyLoader = Ext.create('Rally.technicalservices.HierarchyLoader',{
+                        models: modelNames,
+                        fetch: fetch,
+                        filters: filters,
+                        loadChildModels: childModels,
+                        portfolioItemTypes: this.portfolioItemTypes,
+                        context: this.getContext().getDataContext()
+                    });
+                    hierarchyLoader.on('statusupdate', this._showStatus, this);
+                    hierarchyLoader.on('hierarchyloadartifactsloaded', exporter.setRecords, exporter);
+                    hierarchyLoader.on('hierarchyloadcomplete', exporter.doExport, exporter);
+                    hierarchyLoader.on('hierarchyloaderror', this._showError, this);
+                    hierarchyLoader.load();
+                },
+                failure: function(msg) {
+                    Ext.Msg.alert('',msg);
+                }
+            });
+            
+        },
 
         _launchInfo: function() {
             if ( this.about_dialog ) { this.about_dialog.destroy(); }
@@ -678,6 +785,53 @@
             this.down('#banner_box').removeAll();
             this.down('#grid_box').removeAll();
             this._addComponents();
+        },
+        
+        fetchPortfolioItemTypes: function(){
+            var deferred = Ext.create('Deft.Deferred');
+    
+            var store = Ext.create('Rally.data.wsapi.Store', {
+                model: 'TypeDefinition',
+                fetch: ['TypePath', 'Ordinal','Name'],
+                filters: [
+                    {
+                        property: 'Parent.Name',
+                        operator: '=',
+                        value: 'Portfolio Item'
+                    },
+                    {
+                        property: 'Creatable',
+                        operator: '=',
+                        value: 'true'
+                    }
+                ],
+                sorters: [{
+                    property: 'Ordinal',
+                    direction: 'ASC'
+                }]
+            });
+            store.load({
+                callback: function(records, operation, success){
+    
+                    if (success){
+                        var portfolioItemTypes = new Array(records.length);
+                        _.each(records, function(d){
+                            //Use ordinal to make sure the lowest level portfolio item type is the first in the array.
+                            var idx = Number(d.get('Ordinal'));
+                            portfolioItemTypes[idx] = { typePath: d.get('TypePath').toLowerCase(), name: d.get('Name') };
+                            //portfolioItemTypes.reverse();
+                        });
+                        deferred.resolve(portfolioItemTypes);
+                    } else {
+                        var error_msg = '';
+                        if (operation && operation.error && operation.error.errors){
+                            error_msg = operation.error.errors.join(',');
+                        }
+                        deferred.reject('Error loading Portfolio Item Types:  ' + error_msg);
+                    }
+                }
+            });
+            return deferred.promise;
         }
     });
 })();

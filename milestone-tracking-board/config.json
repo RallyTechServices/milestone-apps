@@ -31,10 +31,13 @@
       "progress-dialog-chart-toggle.js",
       "progress-dialog.js",
 
-       "progress.js",
+      "progress.js",
 
       "progress-burndown-chart.js",
       "progress-cumulative-flow.js",
+      "hierarchy-loader.js",
+      "hierarchy-exporter.js",
+      
       "app.js"
    ]
 }
