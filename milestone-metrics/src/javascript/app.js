@@ -82,8 +82,10 @@ Ext.define("milestone-metrics", {
             fieldLabel: 'Filter by Iteration',
             labelAlign: 'right',
             allowClear: true,
-            width: 300,
-            value: ''
+            getDefaultValue: function() {
+                return null;
+            },
+            width: 300
         });
         this.milestoneSelector.on('change', this._update, this);
         this.iterationFilter.on('change', this._filterIteration, this);

@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Metrics</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jun 23 2016 09:04:15 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Jun 23 2016 09:30:09 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jun 23 2016 09:04:15 GMT-0700 (PDT)";
-        var CHECKSUM = 30659741474;
+        var APP_BUILD_DATE = "Thu Jun 23 2016 09:30:09 GMT-0700 (PDT)";
+        var CHECKSUM = 30736017761;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -260,8 +260,10 @@ Ext.define("milestone-metrics", {
             fieldLabel: 'Filter by Iteration',
             labelAlign: 'right',
             allowClear: true,
-            width: 300,
-            value: ''
+            getDefaultValue: function() {
+                return null;
+            },
+            width: 300
         });
         this.milestoneSelector.on('change', this._update, this);
         this.iterationFilter.on('change', this._filterIteration, this);
