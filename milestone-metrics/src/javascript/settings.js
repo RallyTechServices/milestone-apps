@@ -5,7 +5,15 @@ Ext.define('Rally.technicalservices.Settings',{
 
 
 
-        fields.push({
+        fields.push({ 
+            name: 'storiesOnlyForAccepted',
+            xtype: 'rallycheckboxfield',
+            boxLabelAlign: 'after',
+            fieldLabel: '',
+            margin: '0 0 25 25',
+            boxLabel: 'Stories Only<br/><span style="color:#999999;"><i>Tick to exclude defects, test cases, and defect suites from acceptance calculations</i></span>'
+        },
+        {
             name: 'closedDefectStates',
             xtype: 'rallyfieldvaluecombobox',
             width: 400,

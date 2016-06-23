@@ -3,10 +3,10 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri May 13 2016 17:58:48 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Jun 21 2016 17:12:27 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri May 13 2016 17:58:48 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Tue Jun 21 2016 17:12:27 GMT-0700 (PDT)";
         var CHECKSUM = [%= checksum %];
     </script>
     
