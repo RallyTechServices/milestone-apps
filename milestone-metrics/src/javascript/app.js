@@ -229,7 +229,8 @@ Ext.define("milestone-metrics", {
                 {text: 'Accepted Points', flex: 1, dataIndex: 'acceptedPoints', align: 'center', renderer: this._styleRenderer},
                 {text: 'Remaining Points', flex: 1, dataIndex: 'remaining', align: 'center', renderer: this._styleRenderer},
                 {text: 'Total Points', flex: 1, dataIndex: 'totalPoints', align: 'center', renderer: this._styleRenderer},
-                {text: '% Planned Velocity', flex: 1, dataIndex: 'pctPlannedVelocity', align: 'center', renderer: this._pctRenderer},
+                /*{text: '% Planned Velocity', flex: 1, dataIndex: 'pctPlannedVelocity', align: 'center', renderer: this._pctRenderer},*/
+                {text: 'Planned Velocity / %', flex: 1, dataIndex: 'pctPlannedVelocity', align: 'center', scope: this, renderer: this._pctRendererForPV},
                 {text: 'Passed Tests', flex: 1, dataIndex: 'passedTestCount', align: 'center', renderer: this._styleRenderer},
                 {text: 'Total tests', flex: 1, dataIndex: 'testCount', align: 'center', renderer: this._styleRenderer},
                 {text: 'Active Defects', flex: 1, dataIndex: 'activeDefects', align: 'center', renderer: this._styleRenderer},
@@ -257,6 +258,13 @@ Ext.define("milestone-metrics", {
         }
         return '';
     },
+    
+    _pctRendererForPV: function(v,m,r){
+        var pct = this._pctRenderer(v,m,r);
+        var pv = r.get('plannedVelocity') || 0;
+        return Ext.String.format("{0} / {1}", pv, pct);
+    },
+    
     _dateRenderer: function(v,m,r){
         if (r.get('iteration') === 'Total'){
             m.tdCls = "summary-row";
@@ -280,6 +288,7 @@ Ext.define("milestone-metrics", {
             row.pctPlannedVelocity = row.plannedVelocity ? row.totalPoints/row.plannedVelocity : 0;
             row.pctAccepted =  row.totalPoints > 0 ? row.acceptedPoints/row.totalPoints : 0;
             row.remaining =  row.totalPoints - row.acceptedPoints;
+            
             data.push(row);
         }, this);
 
