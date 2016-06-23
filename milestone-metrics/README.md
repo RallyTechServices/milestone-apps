@@ -12,6 +12,9 @@ The data included in this app is the following:
 * Any Defects associated with a User Story that is explicitly associated with the selected milestone.  
 * Any Test Cases associated with a User Story or Defect that is explicitly associated with the selected milestone.  
 
+**EXCEPTION:**
+* If storiesOnlyForAccepted is ticked in the settings panel, then the total counts/points, accepted counts/points, and percentages will only count user stories and the header of the column will change.
+
 ####Dataset Notes:
 * If a Defect or a Test Case is associated with a User Story, and does not have an iteration explicitly assigned to it, then it will be aggregated into the iteration that its parent work product is in.  
 * If a Defect or a Test Case is associated with a User Story, and has a different iteration than the user story, then it will be aggregated into its explicity iteration, not the iteration of the user story.  

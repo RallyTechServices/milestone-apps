@@ -26,7 +26,8 @@ Ext.define("milestone-metrics", {
     unscheduledIterationName: "Unscheduled",
     config: {
         defaultSettings: {
-            closedDefectStates: ['Closed']
+            closedDefectStates: ['Closed'],
+            storiesOnlyForAccepted: true
         }
     },
 
@@ -148,8 +149,9 @@ Ext.define("milestone-metrics", {
 
         var filters = this._getFilters();
 
+        var models =  ['Defect', 'DefectSuite', 'UserStory','TestCase'];
         var store = Ext.create('Rally.data.wsapi.artifact.Store', {
-            models: ['Defect', 'DefectSuite', 'UserStory','TestCase'],
+            models: models,
             filters: filters,
             limit: 'Infinity',
             context: {
@@ -218,23 +220,7 @@ Ext.define("milestone-metrics", {
 
        this.grid = Ext.create('Rally.ui.grid.Grid',{
             store: store,
-            columnCfgs: [
-                {text: 'Iteration', dataIndex: 'iteration', flex:2, align: 'left', renderer: this._styleRenderer},
-                {text: 'Start Date', dataIndex: 'startDate', flex:1, align: 'left', renderer: this._dateRenderer},
-                {text: 'End Date', dataIndex: 'endDate', flex:1, align: 'left', renderer: this._dateRenderer},
-                {text: 'Project', dataIndex: 'project', flex: 3, align: 'left', renderer: this._styleRenderer},
-                {text: 'Total Work Item Count', flex: 1, dataIndex: 'totalCount', align: 'center', renderer: this._styleRenderer},
-                {text: 'Accepted Work Item Count', flex: 1, dataIndex: 'acceptedCount', align: 'center', renderer: this._styleRenderer},
-                {text: '% Accepted', flex: 1, dataIndex: 'pctAccepted', align: 'center', renderer: this._pctRenderer},
-                {text: 'Accepted Points', flex: 1, dataIndex: 'acceptedPoints', align: 'center', renderer: this._styleRenderer},
-                {text: 'Remaining Points', flex: 1, dataIndex: 'remaining', align: 'center', renderer: this._styleRenderer},
-                {text: 'Total Points', flex: 1, dataIndex: 'totalPoints', align: 'center', renderer: this._styleRenderer},
-                /*{text: '% Planned Velocity', flex: 1, dataIndex: 'pctPlannedVelocity', align: 'center', renderer: this._pctRenderer},*/
-                {text: 'Planned Velocity / %', flex: 1, dataIndex: 'pctPlannedVelocity', align: 'center', scope: this, renderer: this._pctRendererForPV},
-                {text: 'Passed Tests', flex: 1, dataIndex: 'passedTestCount', align: 'center', renderer: this._styleRenderer},
-                {text: 'Total tests', flex: 1, dataIndex: 'testCount', align: 'center', renderer: this._styleRenderer},
-                {text: 'Active Defects', flex: 1, dataIndex: 'activeDefects', align: 'center', renderer: this._styleRenderer},
-                {text: 'Total Defects', flex: 1, dataIndex: 'totalDefects', align: 'center', renderer: this._styleRenderer}]
+            columnCfgs: this._getColumns()
         });
         this.add(this.grid);
 
@@ -243,6 +229,35 @@ Ext.define("milestone-metrics", {
         }
 
     },
+    
+    _getColumns: function() {
+        var total_count_title = 'Total Work Item Count';
+        var acceptance_count_title = 'Accepted Work Item Count';
+        if ( this.getSetting('storiesOnlyForAccepted') ) {
+            total_count_title = 'Total User Stories';
+            acceptance_count_title = 'Accepted User Story Count';
+        }
+        var columns =  [
+            {text: 'Iteration', dataIndex: 'iteration', flex:2, align: 'left', renderer: this._styleRenderer},
+            {text: 'Start Date', dataIndex: 'startDate', flex:1, align: 'left', renderer: this._dateRenderer},
+            {text: 'End Date', dataIndex: 'endDate', flex:1, align: 'left', renderer: this._dateRenderer},
+            {text: 'Project', dataIndex: 'project', flex: 3, align: 'left', renderer: this._styleRenderer},
+            {text: total_count_title, flex: 1, dataIndex: 'totalCount', align: 'center', renderer: this._styleRenderer},
+            {text: acceptance_count_title, flex: 1, dataIndex: 'acceptedCount', align: 'center', renderer: this._styleRenderer},
+            {text: '% Accepted', flex: 1, dataIndex: 'pctAccepted', align: 'center', renderer: this._pctRenderer},
+            {text: 'Accepted Points', flex: 1, dataIndex: 'acceptedPoints', align: 'center', renderer: this._styleRenderer},
+            {text: 'Remaining Points', flex: 1, dataIndex: 'remaining', align: 'center', renderer: this._styleRenderer},
+            {text: 'Total Points', flex: 1, dataIndex: 'totalPoints', align: 'center', renderer: this._styleRenderer},
+            /*{text: '% Planned Velocity', flex: 1, dataIndex: 'pctPlannedVelocity', align: 'center', renderer: this._pctRenderer},*/
+            {text: 'Planned Velocity / %', flex: 1, dataIndex: 'pctPlannedVelocity', align: 'center', scope: this, renderer: this._pctRendererForPV},
+            {text: 'Passed Tests', flex: 1, dataIndex: 'passedTestCount', align: 'center', renderer: this._styleRenderer},
+            {text: 'Total tests', flex: 1, dataIndex: 'testCount', align: 'center', renderer: this._styleRenderer},
+            {text: 'Active Defects', flex: 1, dataIndex: 'activeDefects', align: 'center', renderer: this._styleRenderer},
+            {text: 'Total Defects', flex: 1, dataIndex: 'totalDefects', align: 'center', renderer: this._styleRenderer}
+        ];
+        return columns;
+    },
+    
     _styleRenderer: function(v,m,r){
         if (r.get('iteration') === 'Total'){
             m.tdCls = "summary-row";
@@ -347,7 +362,8 @@ Ext.define("milestone-metrics", {
         return ['Passed'];
     },
     _getStatistics: function(records){
-        var acceptedStates = this._getAcceptedScheduleStates(),
+        var me = this,
+            acceptedStates = this._getAcceptedScheduleStates(),
             closedDefectStates = this._getClosedDefectStates(),
             passedValues = this._getPassedTestValues(),
             acceptedCount = 0,
@@ -360,13 +376,15 @@ Ext.define("milestone-metrics", {
             totalCount = 0;
 
         _.each(records, function(r){
-            if (r.get('ScheduleState') && Ext.Array.contains(acceptedStates, r.get('ScheduleState'))){
-                acceptedCount++;
-                acceptedPoints += r.get('PlanEstimate') || 0;
+            if ( ! me.getSetting('storiesOnlyForAccepted') || r.get('_type') === 'hierarchicalrequirement' ) {
+                if (r.get('ScheduleState') && Ext.Array.contains(acceptedStates, r.get('ScheduleState'))){
+                    acceptedCount++;
+                    acceptedPoints += r.get('PlanEstimate') || 0;
+                }
+                totalPoints += r.get('PlanEstimate') || 0;
+                totalCount++;
             }
-            totalPoints += r.get('PlanEstimate') || 0;
-            totalCount++;
-
+            
             if (r.get('_type') === 'defect'){
                 totalDefects++;
                 if (!Ext.Array.contains(closedDefectStates, r.get('State'))){
