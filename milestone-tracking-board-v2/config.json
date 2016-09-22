@@ -1,7 +1,7 @@
 {
    "name": "Milestone Tracking Board",
    "className": "technical-services-MilestoneTrackingApp",
-   "server": "https://demo-east.rallydev.com",
+   "server": "https://rally1.rallydev.com",
    "sdk": "2.1",
    "apiKey": "_PUT_APIKEY_HERE_",
    "javascript": [
