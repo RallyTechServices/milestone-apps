@@ -1,9 +1,9 @@
 (function() {
     var Ext = window.Ext4 || window.Ext;
 
-    showTooltip = function(values){
-        console.log('showTooltip',this)
-    };
+    //showTooltip = function(values){
+    //    console.log('showTooltip',this)
+    //};
     /**
      * gauge chart for stats banner
      * abstract class
@@ -58,9 +58,6 @@
             return '';
         },
         initComponent: function() {
-            //Ext.QuickTips.init();
-
-            //this.store.on('datachanged', this.onDataChanged, this);
             this.mon(this.store, 'datachanged', this.onDataChanged, this);
             this.callParent(arguments);
         },
@@ -145,19 +142,15 @@
             if (this.store.getRange().length === 0) {
                 this._addEmptyChart();
             }
-            console.log('onRender', this.getEl());
-
             this.tooltipObject = Ext.create('Rally.ui.tooltip.ToolTip', {
                 target: this.getEl(),
                 html: this.tooltip
             });
 
             this.getEl().on('mouseenter', function(e,t){
-                console.log('mouseenter',e,t)
                 this.tooltipObject.show();
             }, this);
             this.getEl().on('mouseleave', function(e,t){
-                console.log('mouseleave', e, t)
                 this.tooltipObject.hide();
             }, this);
 
