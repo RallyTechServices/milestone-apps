@@ -138,8 +138,7 @@
             }
 
             var targetDate = Rally.util.DateTime.fromIsoString(this.timeboxRecord.get(this.timeboxEndDateField)),
-                testcaseResults = this.testCaseResults || null,
-                oids = _.map(testCases, function(tc){ return tc.get('ObjectID')});
+                testcaseResults = this.testCaseResults || null;
 
             if (testcaseResults){
                 _.each(testCases, function(tc){
@@ -151,6 +150,7 @@
                     tc.set('_milestoneTargetDate', targetDate)
                 });
                 store.fireEvent('datachanged');
+
             } else {
                 var filters =  Rally.data.wsapi.Filter.or([{
                     property: 'TestCase.Milestones.ObjectID',

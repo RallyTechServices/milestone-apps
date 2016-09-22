@@ -103,6 +103,7 @@
                 }
             });
             cb.on('select', this._update, this);
+            cb.on('ready', this._update, this);
 
             var tpl = new Ext.XTemplate('<div class="selector-msg"><tpl if="days &gt;= 0">Target Date: {targetDate} ({days} days remaining)',
                 '<tpl elseif="days &lt; 0">Target Date: {targetDate} <span style="color:red;">({days*(-1)} days past)</span>',
@@ -163,12 +164,15 @@
             }
 
             var rec = this._getTimeBoxRecord();
-            if (rec){
-                var targetDate = Rally.util.DateTime.fromIsoString(rec.get('TargetDate')),
-                    days = Rally.util.DateTime.getDifference(targetDate,new Date(), 'day'),
-                    formattedTargetDate = Rally.util.DateTime.formatWithDefault(targetDate);
-                this.down('#remaining-days').update({days: days, targetDate: formattedTargetDate});
+            this.logger.log('_update', rec);
+            if (!rec){
+                return;
             }
+
+            var targetDate = Rally.util.DateTime.fromIsoString(rec.get('TargetDate')),
+                days = Rally.util.DateTime.getDifference(targetDate,new Date(), 'day'),
+                formattedTargetDate = Rally.util.DateTime.formatWithDefault(targetDate);
+            this.down('#remaining-days').update({days: days, targetDate: formattedTargetDate});
 
             this._getGridStore().then({
                 success: this._addGridBoard,
@@ -316,56 +320,79 @@
                 };
 
             config.filters = this._getFilters();
+            this.testCaseResults = null;  //clear this out so that we populate it correctly....
+
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(config).then({
                 success: function (store) {
-                    store.on('load', this._loadAttachmentInformation, this, {single: true});
+                    store.on('load', this._loadAttachmentInformation, this);
                     return store;
                 },
                 scope: this
             });
         },
+        getDisplayTestCaseResultAttachments: function(){
+            return this.getSetting('displayTestCaseResultAttachments') === 'true' ||
+                this.getSetting('displayTestCaseResultAttachments') === true;
+        },
+        _updateTestCases: function(testCaseResults, testCases){
+
+            if (!testCaseResults){
+                return;
+            }
+
+            var displayTestCaseResultAttachments = this.getDisplayTestCaseResultAttachments(),
+                milestoneTargetDate = Rally.util.DateTime.fromIsoString(this._getTimeBoxRecord().get('TargetDate'));
+
+            this.logger.log('_updateTestCases',displayTestCaseResultAttachments, milestoneTargetDate, testCaseResults.length, testCases.length);
+
+            _.each(testCases, function(tc){
+                var results = _.filter(testCaseResults, function(tcr){ return tcr.get('TestCase').ObjectID === tc.get('ObjectID'); }),
+                    resultsWithAttachments = _.filter(results, function(r){ return r.get('Attachments') && r.get('Attachments').Count > 0; });
+                tc.set('_showAttachments',displayTestCaseResultAttachments);
+                tc.set('resultsTotal',results.length);
+                tc.set('resultsWithAttachments',resultsWithAttachments.length);
+                tc.set('_milestoneTargetDate', milestoneTargetDate);
+            });
+        },
+        _onLoad: function (grid) {
+
+            this.logger.log('_onLoad customFilter', grid.currentCustomFilter);
+            if (this.down('statsbanner')){
+                this.down('statsbanner').updateFilters(grid.currentCustomFilter)
+            } else {
+                this._addStatsBanner(grid.currentCustomFilter);
+            }
+        },
+
         _loadAttachmentInformation: function(store, node, records){
             this.logger.log('_loadAttachmentInformation', store , records);
-            var displayTestCaseResultAttachments = this.getSetting('displayTestCaseResultAttachments') === 'true' ||
-                this.getSetting('displayTestCaseResultAttachments') === true,
-                milestoneTargetDate = Rally.util.DateTime.fromIsoString(this._getTimeBoxRecord().get('TargetDate'));
 
             if (!records || records.length === 0 ){
                 return;
             }
+            var testCases = _.filter(records, function(r){ return r.get('_type') === 'testcase'; });
+            this.logger.log('_loadAttachmentInformation testCases', testCases.length);
 
-            var testCases = _.filter(records, function(r){ return r.get('_type') === 'testcase'; }),
-                oids = _.map(testCases, function(r){ return r.get('ObjectID'); });
-
-            this.logger.log('_loadAttachmentInformation test case oids', oids);
-
-            if (!oids || oids.length === 0){
-                return;
+            if (this.testCaseResults){
+                this._updateTestCases(this.testCaseResults, testCases);
+            } else {
+                this.setLoading(true);
+                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters(),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments']).then({
+                    success: function(testCaseResults){
+                        this.logger.log('_loadAttachmentsInformation load success', testCaseResults);
+                        this.testCaseResults = testCaseResults;
+                        this._updateTestCases(testCaseResults, testCases);
+                        this.getStatsBanner() && this.getStatsBanner().addTestCaseResults(testCaseResults);
+                    },
+                    failure: function(msg){
+                        Rally.ui.notify.Notifier.showError({message: "Error loading Test Case Result Attachment Information:  " + msg});
+                        this.logger.log('_loadAttachmentsInformation load error', msg)
+                    },
+                    scope: this
+                }).always(function(){
+                    this.setLoading(false);
+                },this);
             }
-
-            this.setLoading(true);
-            Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters(),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments']).then({
-                success: function(testCaseResults){
-                    this.logger.log('_loadAttachmentsInformation load callback', testCaseResults);
-                    this.testCaseResults = testCaseResults;
-                    _.each(testCases, function(tc){
-                        var results = _.filter(testCaseResults, function(tcr){ return tcr.get('TestCase').ObjectID === tc.get('ObjectID'); }),
-                            resultsWithAttachments = _.filter(results, function(r){ return r.get('Attachments') && r.get('Attachments').Count > 0; });
-                        tc.set('_showAttachments',displayTestCaseResultAttachments);
-                        tc.set('resultsTotal',results.length);
-                        tc.set('resultsWithAttachments',resultsWithAttachments.length);
-                        tc.set('_milestoneTargetDate', milestoneTargetDate);
-                    });
-                    this.getStatsBanner() && this.getStatsBanner().addTestCaseResults(testCaseResults);
-                    this.setLoading(false);
-                },
-                failure: function(msg){
-                    this.setLoading(false);
-                    Rally.ui.notify.Notifier.showError({message: "Error loading Test Case Result Attachment Information:  " + msg});
-                    this.logger.log('_loadAttachmentsInformation load callback', msg)
-                },
-                scope: this
-            });
 
         },
         _updateLateStories: function(latestories){
@@ -411,7 +438,10 @@
                     latestoriesfound: this._updateLateStories
                 }
             });
-            statsBanner.addTestCaseResults(this.testCaseResults);
+            if (this.testCaseResults){
+                statsBanner.addTestCaseResults(this.testCaseResults);
+            }
+
         },
 
         _addGridBoard: function (gridStore) {
@@ -753,27 +783,8 @@
             return result;
         },
 
-        _onLoad: function (grid) {
-            this.logger.log('_onLoad');
-            var store = grid.getGridOrBoard().getStore(),
-                re = new RegExp("portfolioitem/","i");
 
-            store.each(function(record){
-              if (re.test(record.get('_type')) && !record.get('UserStories') && record.get('DirectChildrenCount') > 0){
-                 //todo: Fix this!!!!
-                 this.logger.log('_onLoad Feature with missing children', record.get('FormattedID'), record);
-              }
-            },this);
 
-            this.logger.log('_onLoad Update Stats Banner', store.filters, grid.currentCustomFilter);
-            if (this.down('statsbanner')){
-                this.logger.log('_onLoad Update Stats Banner filters', store.filters, grid.currentCustomFilter);
-
-                this.down('statsbanner').updateFilters(grid.currentCustomFilter)
-            } else {
-                this._addStatsBanner(grid.currentCustomFilter);
-            }
-        },
 
         _onBoardFilter: function () {
             this.setLoading(true);
