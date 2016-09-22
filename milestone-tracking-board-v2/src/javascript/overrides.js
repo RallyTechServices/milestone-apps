@@ -350,6 +350,15 @@ Ext.override(Rally.ui.combobox.FieldValueComboBox,{
 });
 
 Ext.override(Rally.ui.grid.FieldColumnFactory, {
+    Attachments: function() {
+        return {
+            sortable: true,
+            sortType: function(o1){
+                console.log('Attachement sorterFn', o1)
+                return 'a';
+            }
+        };
+    },
         _blackListedFields: {
             task: [
 //                'Attachments',

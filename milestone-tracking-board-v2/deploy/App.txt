@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jun 21 2016 07:16:41 GMT-0600 (MDT) -->
+    <!--  Build Date: Thu Sep 22 2016 15:57:00 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jun 21 2016 07:16:41 GMT-0600 (MDT)";
-        var CHECKSUM = 243508213753;
+        var APP_BUILD_DATE = "Thu Sep 22 2016 15:57:00 GMT-0600 (MDT)";
+        var CHECKSUM = 255428393048;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -241,6 +241,7 @@ Ext.define('Rally.technicalservices.Utilities',{
             model: model,
             fetch: fetch_fields,
             filters: query_filters,
+            pageSize: 1000,
             limit: Infinity
         }).load({
             callback: function(records, operation, success){
@@ -801,6 +802,15 @@ Ext.override(Rally.ui.combobox.FieldValueComboBox,{
 });
 
 Ext.override(Rally.ui.grid.FieldColumnFactory, {
+    Attachments: function() {
+        return {
+            sortable: true,
+            sortType: function(o1){
+                console.log('Attachement sorterFn', o1)
+                return 'a';
+            }
+        };
+    },
         _blackListedFields: {
             task: [
 //                'Attachments',
@@ -973,6 +983,7 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
             this._createWorkItemStore(this.customFilters);
             this._createTestCaseStore();
 
+
             //need to configure the items at the instance level, not the class level (i.e. don't use the 'defaults' config)
             this.items[4].testCaseTypes = this.uatTestCaseType;
             this.items = this._configureItems(this.items);
@@ -981,44 +992,60 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
             this.on('collapse', this._onCollapse, this);
             this.store.on('load', this._checkForLateStories, this);
             this.testCaseStore.on('load', this._loadTestCaseResults, this);
+
             this.callParent(arguments);
             this._update();
 
         },
-        _loadTestCaseResults: function(store, records){
-            if (!records || records.length === 0){
+        addTestCaseResults: function(testCaseResults){
+            this.testCaseResults = testCaseResults;
+        },
+        _loadTestCaseResults: function(store, testCases){
+            if (!testCases || testCases.length === 0){
                 return;
             }
 
-            var testCases = _.filter(records, function(r){ return r.get('_type') === 'testcase'; }),
-                oids = _.map(testCases, function(r){ return r.get('ObjectID'); });
+            var targetDate = Rally.util.DateTime.fromIsoString(this.timeboxRecord.get(this.timeboxEndDateField)),
+                testcaseResults = this.testCaseResults || null,
+                oids = _.map(testCases, function(tc){ return tc.get('ObjectID')});
 
-            if (!oids || oids.length === 0){
-                return;
+            if (testcaseResults){
+                _.each(testCases, function(tc){
+                    var results = _.filter(testcaseResults, function(tcr){ return tcr.get('TestCase').ObjectID === tc.get('ObjectID'); }),
+                        resultsWithAttachments = _.filter(results, function(r){ return r.get('Attachments') && r.get('Attachments').Count > 0; });
+
+                    tc.set('_resultsTotal',results.length);
+                    tc.set('_resultsWithAttachments',resultsWithAttachments.length);
+                    tc.set('_milestoneTargetDate', targetDate)
+                });
+                store.fireEvent('datachanged');
+            } else {
+                var filters =  Rally.data.wsapi.Filter.or([{
+                    property: 'TestCase.Milestones.ObjectID',
+                    value:  this.timeboxRecord.get('ObjectID')
+                },{
+                    property: 'TestCase.WorkProduct.Milestones.ObjectID',
+                    value:  this.timeboxRecord.get('ObjectID')
+                }]);
+
+                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',filters,['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments']).then({
+                    success: function(testcaseResults){
+                         _.each(testCases, function(tc){
+                            var results = _.filter(testcaseResults, function(tcr){ return tcr.get('TestCase').ObjectID === tc.get('ObjectID'); }),
+                                resultsWithAttachments = _.filter(results, function(r){ return r.get('Attachments') && r.get('Attachments').Count > 0; });
+
+                            tc.set('_resultsTotal',results.length);
+                            tc.set('_resultsWithAttachments',resultsWithAttachments.length);
+                            tc.set('_milestoneTargetDate', targetDate)
+                        });
+                        store.fireEvent('datachanged');
+                    },
+                    failure: function(msg){
+                        Rally.ui.notify.Notifier.showError({message: "Error loading Test Case Result Information:  " + msg});
+                    },
+                    scope: this
+                });
             }
-            var targetDate = Rally.util.DateTime.fromIsoString(this.timeboxRecord.get(this.timeboxEndDateField));
-            Ext.create('Rally.technicalservices.data.ChunkerStore',{
-                model: 'TestCaseResult',
-                chunkOids: oids,
-                chunkField: "TestCase.ObjectID",
-                fetch: ['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments']
-            }).load().then({
-                success: function(testCaseResults){
-                    _.each(testCases, function(tc){
-                        var results = _.filter(testCaseResults, function(tcr){ return tcr.get('TestCase').ObjectID === tc.get('ObjectID'); }),
-                            resultsWithAttachments = _.filter(results, function(r){ return r.get('Attachments') && r.get('Attachments').Count > 0; });
-
-                        tc.set('_resultsTotal',results.length);
-                        tc.set('_resultsWithAttachments',resultsWithAttachments.length);
-                        tc.set('_milestoneTargetDate', targetDate)
-                    });
-                    store.fireEvent('datachanged');
-                },
-                failure: function(operation){
-                    //this.logger.log('_loadAttachmentsInformation load callback', operation)
-                },
-                scope: this
-            });
         },
         _checkForLateStories: function(store){
             var lateStories = [],
@@ -1141,16 +1168,16 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
         },
         _getWorkItemFilters: function(customFilters){
             var filters = Ext.create('Rally.data.wsapi.Filter',{
-                property: 'Milestones',
-                value: this.timeboxRecord.get('_ref')
+                property: 'Milestones.ObjectID',
+                value: this.timeboxRecord.get('ObjectID')
             });
             filters = filters.or({
-                property: 'Requirement.Milestones',
-                value: this.timeboxRecord.get('_ref')
+                property: 'Requirement.Milestones.ObjectID',
+                value: this.timeboxRecord.get('ObjectID')
             });
             filters = filters.or({
-                property: 'TestCase.WorkProduct.Milestones',
-                value: this.timeboxRecord.get('_ref')
+                property: 'TestCase.WorkProduct.Milestones.ObjectID',
+                value: this.timeboxRecord.get('ObjectID')
             });
 
             if (customFilters && customFilters.filters && customFilters.filters.length > 0  && customFilters.types &&
@@ -1162,12 +1189,33 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
 
             return filters;
         },
+        _createTestCaseResultStore: function(){
+
+            var filters =  Rally.data.wsapi.Filter.or([{
+                property: 'TestCase.Milestones.ObjectID',
+           //     operator: 'contains',
+                value:  this.timeboxRecord.get('ObjectID')
+            },{
+                property: 'TestCase.WorkProduct.Milestones.ObjectID',
+           //     operator: 'contains',
+                value:  this.timeboxRecord.get('ObjectID')
+            }]);
+
+            this.testCaseResultStore = Ext.create('Rally.data.wsapi.Store',{
+                model: 'TestCaseResult',
+                filters: filters,
+                fetch: ['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments'],
+                context: this.context.getDataContext(),
+                pageSize: 1000,
+                limit: 'Infinity'
+            });
+        },
 
         _createTestCaseStore: function(){
 
             var filters =  Ext.create('Rally.data.wsapi.Filter',{
-                property: 'WorkProduct.Milestones',
-                value: this.timeboxRecord.get('_ref')
+                property: 'WorkProduct.Milestones.ObjectID',
+                value: this.timeboxRecord.get('ObjectID')
             });
 
             this.testCaseStore = Ext.create('Rally.data.wsapi.Store',{
@@ -1175,6 +1223,7 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
                 filters: filters,
                 fetch: ['LastRun','LastVerdict','Attachments','Type','WorkProduct','ObjectID'],
                 context: this.context.getDataContext(),
+                pageSize: 1000,
                 limit: 'Infinity'
             });
         },
@@ -1185,8 +1234,9 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
                 models: ['HierarchicalRequirement','Defect'],
                 fetch: ['ObjectID', 'FormattedID', 'ScheduleState', 'PlanEstimate','Iteration','Name','StartDate','EndDate','State','DirectChildrenCount','TestCases','Resolution'],
                 filters: filters,
+                pageSize: 1000,
                 context: this.context.getDataContext(),
-                limit: Infinity
+                limit: 'Infinity'
             });
         },
         updateFilters: function(customFilters){
@@ -1476,9 +1526,9 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
 (function() {
     var Ext = window.Ext4 || window.Ext;
 
-    showTooltip = function(values){
-        console.log('showTooltip',this)
-    };
+    //showTooltip = function(values){
+    //    console.log('showTooltip',this)
+    //};
     /**
      * gauge chart for stats banner
      * abstract class
@@ -1533,9 +1583,6 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
             return '';
         },
         initComponent: function() {
-            //Ext.QuickTips.init();
-
-            //this.store.on('datachanged', this.onDataChanged, this);
             this.mon(this.store, 'datachanged', this.onDataChanged, this);
             this.callParent(arguments);
         },
@@ -1620,19 +1667,15 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
             if (this.store.getRange().length === 0) {
                 this._addEmptyChart();
             }
-            console.log('onRender', this.getEl());
-
             this.tooltipObject = Ext.create('Rally.ui.tooltip.ToolTip', {
                 target: this.getEl(),
                 html: this.tooltip
             });
 
             this.getEl().on('mouseenter', function(e,t){
-                console.log('mouseenter',e,t)
                 this.tooltipObject.show();
             }, this);
             this.getEl().on('mouseleave', function(e,t){
-                console.log('mouseleave', e, t)
                 this.tooltipObject.hide();
             }, this);
 
@@ -1911,7 +1954,7 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
                 workProducts = _.map(workProducts, function(wp){
                     return wp.get('ObjectID');
                 });
-                console.log('testcasetypes', this.testCaseTypes)
+
                 var testCases = _.filter(this.testCaseStore.getRange(), function(tc){
                     if (Ext.Array.contains(workProducts, tc.get('WorkProduct').ObjectID) &&
                         (testCaseTypes.length === 0 || Ext.Array.contains(testCaseTypes, tc.get('Type')))){
@@ -2464,10 +2507,12 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
                 emptyText: 'Select a Milestone...',
                 storeConfig: {
                     filters: filters,
-                    remoteFilter: true
+                    remoteFilter: true,
+                    limit: 'Infinity',
+                    pageSize: 200
                 }
             });
-            cb.on('change', this._update, this);
+            cb.on('select', this._update, this);
 
             var tpl = new Ext.XTemplate('<div class="selector-msg"><tpl if="days &gt;= 0">Target Date: {targetDate} ({days} days remaining)',
                 '<tpl elseif="days &lt; 0">Target Date: {targetDate} <span style="color:red;">({days*(-1)} days past)</span>',
@@ -2622,27 +2667,35 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
 
             return fields;
         },
+        _getTCRFilters: function(){
+            var filters = [];
+            if (this._getTimeBoxRecord()){
+                var milestone = this._getTimeBoxRecord();
+                filters =  Rally.data.wsapi.Filter.or([{
+                    property: 'TestCase.Milestones.ObjectID',
+                    value:  milestone.get('ObjectID')
+                },{
+                    property: 'TestCase.WorkProduct.Milestones.ObjectID',
+                    value:  milestone.get('ObjectID')
+                }]);
+            }
+            this.logger.log('_getFilters', filters.toString());
+            return filters;
+        },
         _getFilters: function(){
             var filters = [];
             if (this._getTimeBoxRecord()){
                 var milestone = this._getTimeBoxRecord();
-                //return Rally.data.wsapi.Filter({
-                //    property: 'Milestones',
-                //    value: milestone
-                //});
 
                 filters =  Rally.data.wsapi.Filter.or([{
-                    property: "Milestones.FormattedID",
-                    operator: 'contains',
-                    value: milestone.get('FormattedID')
+                    property: "Milestones.ObjectID",
+                    value: milestone.get('ObjectID')
                 },{
-                    property: 'Requirement.Milestones.FormattedID',
-                    operator: 'contains',
-                    value:  milestone.get('FormattedID')
+                    property: 'Requirement.Milestones.ObjectID',
+                    value:  milestone.get('ObjectID')
                 },{
-                    property: 'WorkProduct.Milestones.FormattedID',
-                    operator: 'contains',
-                    value:  milestone.get('FormattedID')
+                    property: 'WorkProduct.Milestones.ObjectID',
+                    value:  milestone.get('ObjectID')
                 }]);
             }
             this.logger.log('_getFilters', filters.toString());
@@ -2675,7 +2728,7 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
             config.filters = this._getFilters();
             return Ext.create('Rally.data.wsapi.TreeStoreBuilder').build(config).then({
                 success: function (store) {
-                    store.on('load', this._loadAttachmentInformation, this);
+                    store.on('load', this._loadAttachmentInformation, this, {single: true});
                     return store;
                 },
                 scope: this
@@ -2701,14 +2754,10 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
             }
 
             this.setLoading(true);
-            Ext.create('Rally.technicalservices.data.ChunkerStore',{
-                model: 'TestCaseResult',
-                chunkOids: oids,
-                chunkField: "TestCase.ObjectID",
-                fetch: ['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments']
-            }).load().then({
+            Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters(),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments']).then({
                 success: function(testCaseResults){
                     this.logger.log('_loadAttachmentsInformation load callback', testCaseResults);
+                    this.testCaseResults = testCaseResults;
                     _.each(testCases, function(tc){
                         var results = _.filter(testCaseResults, function(tcr){ return tcr.get('TestCase').ObjectID === tc.get('ObjectID'); }),
                             resultsWithAttachments = _.filter(results, function(r){ return r.get('Attachments') && r.get('Attachments').Count > 0; });
@@ -2717,19 +2766,25 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
                         tc.set('resultsWithAttachments',resultsWithAttachments.length);
                         tc.set('_milestoneTargetDate', milestoneTargetDate);
                     });
+                    this.getStatsBanner() && this.getStatsBanner().addTestCaseResults(testCaseResults);
                     this.setLoading(false);
                 },
-                failure: function(operation){
+                failure: function(msg){
                     this.setLoading(false);
-                    this.logger.log('_loadAttachmentsInformation load callback', operation)
+                    Rally.ui.notify.Notifier.showError({message: "Error loading Test Case Result Attachment Information:  " + msg});
+                    this.logger.log('_loadAttachmentsInformation load callback', msg)
                 },
                 scope: this
             });
+
         },
         _updateLateStories: function(latestories){
             this.logger.log('_updateLateStories', latestories);
             this.down('#late-stories').update({latestories: latestories.length});
             this.lateStories = latestories;
+        },
+        getStatsBanner: function(){
+            return this.down('statsbanner');
         },
         _addStatsBanner: function(customFilters) {
 
@@ -2737,7 +2792,7 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
                 resolvedDefectStates = this.getSetting('resolvedDefectValues')|| [],
                 uatTestTypes = [this.getSetting('uatTestCaseType')];
 
-            this.logger.log('_addStatsBanner', closedDefectStates, resolvedDefectStates, uatTestTypes);
+            this.logger.log('_addStatsBanner', closedDefectStates, resolvedDefectStates, uatTestTypes, this.testCaseResults);
             if (Ext.isString(closedDefectStates)){
                 closedDefectStates = closedDefectStates.split(',');
             }
@@ -2747,10 +2802,9 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
             }
             this.logger.log('_addStatsBanner', closedDefectStates, resolvedDefectStates);
             this.remove('statsBanner');
-            this.down('#banner_box').add({
+            var statsBanner = this.down('#banner_box').add({
                 xtype: 'statsbanner',
                 itemId: 'statsBanner',
-                //storeConfig: this._getStoreConfigs(),
                 scheduleStates: this.scheduleStates,
                 context: this.getContext(),
                 timeboxRecord: this._getTimeBoxRecord(),
@@ -2767,6 +2821,7 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
                     latestoriesfound: this._updateLateStories
                 }
             });
+            statsBanner.addTestCaseResults(this.testCaseResults);
         },
 
         _addGridBoard: function (gridStore) {

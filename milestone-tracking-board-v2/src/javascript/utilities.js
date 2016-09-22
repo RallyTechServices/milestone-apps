@@ -63,6 +63,7 @@ Ext.define('Rally.technicalservices.Utilities',{
             model: model,
             fetch: fetch_fields,
             filters: query_filters,
+            pageSize: 1000,
             limit: Infinity
         }).load({
             callback: function(records, operation, success){
