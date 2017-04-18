@@ -181,7 +181,8 @@
         },
         _getModelNames: function () {
             this.logger.log('_getModelNames',this.sModelNames);
-            return this.sModelNames.concat(['HierarchicalRequirement','Defect','TestCase']);
+           // return this.sModelNames.concat(['HierarchicalRequirement','Defect','TestCase','TestSet']);
+            return ['HierarchicalRequirement','Defect','TestSet','TestCase'];
         },
 
         getSettingsFields: function () {
@@ -316,7 +317,8 @@
                     pageSize: 200,
                     limit: 'Infinity',
                     root: {expanded: true},
-                    enableHierarchy: true
+                    enableHierarchy: true,
+                    context: {project: null}
                 };
 
             config.filters = this._getFilters();
@@ -446,7 +448,10 @@
 
         _addGridBoard: function (gridStore) {
             var context = this.getContext();
-            this.logger.log('_addGridboard');
+
+
+
+            this.logger.log('_addGridboard', context);
             this.gridboard = this.add({
                 itemId: 'gridBoard',
                 xtype: 'rallygridboard',
@@ -731,7 +736,8 @@
                 plugins: [],
                 stateId: stateId,
                 storeConfig: {
-                    filters: this._getFilters()
+                    filters: this._getFilters(),
+                    context: {project: null}
                 },
                 stateful: true,
                 showPagingToolbar: true

@@ -56,7 +56,7 @@ Ext.define('Rally.technicalservices.Utilities',{
         });
         return deferred;
     },
-    fetchWsapiRecords: function(model, query_filters, fetch_fields){
+    fetchWsapiRecords: function(model, query_filters, fetch_fields, ignoreContext){
         var deferred = Ext.create('Deft.Deferred');
 
         var store = Ext.create('Rally.data.wsapi.Store',{
@@ -64,7 +64,8 @@ Ext.define('Rally.technicalservices.Utilities',{
             fetch: fetch_fields,
             filters: query_filters,
             pageSize: 1000,
-            limit: Infinity
+            limit: Infinity,
+            context: {project: null} //here becuase we are looking for milestone specific infomration and that can be in any project now
         }).load({
             callback: function(records, operation, success){
                 if (success){
