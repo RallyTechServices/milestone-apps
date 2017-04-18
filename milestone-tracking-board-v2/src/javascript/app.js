@@ -317,7 +317,8 @@
                     pageSize: 200,
                     limit: 'Infinity',
                     root: {expanded: true},
-                    enableHierarchy: true
+                    enableHierarchy: true,
+                    context: {project: null}
                 };
 
             config.filters = this._getFilters();
@@ -447,7 +448,10 @@
 
         _addGridBoard: function (gridStore) {
             var context = this.getContext();
-            this.logger.log('_addGridboard');
+
+
+
+            this.logger.log('_addGridboard', context);
             this.gridboard = this.add({
                 itemId: 'gridBoard',
                 xtype: 'rallygridboard',

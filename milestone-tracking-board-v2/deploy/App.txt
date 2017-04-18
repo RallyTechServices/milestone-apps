@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Apr 18 2017 15:16:37 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Apr 18 2017 15:32:20 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Apr 18 2017 15:16:37 GMT-0600 (MDT)";
-        var CHECKSUM = 257174914837;
+        var APP_BUILD_DATE = "Tue Apr 18 2017 15:32:20 GMT-0600 (MDT)";
+        var CHECKSUM = 257406110099;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -2728,7 +2728,8 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
                     pageSize: 200,
                     limit: 'Infinity',
                     root: {expanded: true},
-                    enableHierarchy: true
+                    enableHierarchy: true,
+                    context: {project: null}
                 };
 
             config.filters = this._getFilters();
@@ -2858,7 +2859,10 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
 
         _addGridBoard: function (gridStore) {
             var context = this.getContext();
-            this.logger.log('_addGridboard');
+
+
+
+            this.logger.log('_addGridboard', context);
             this.gridboard = this.add({
                 itemId: 'gridBoard',
                 xtype: 'rallygridboard',
