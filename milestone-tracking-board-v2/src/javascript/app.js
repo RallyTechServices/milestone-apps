@@ -181,7 +181,8 @@
         },
         _getModelNames: function () {
             this.logger.log('_getModelNames',this.sModelNames);
-            return this.sModelNames.concat(['HierarchicalRequirement','Defect','TestCase']);
+           // return this.sModelNames.concat(['HierarchicalRequirement','Defect','TestCase','TestSet']);
+            return ['HierarchicalRequirement','Defect','TestSet','TestCase'];
         },
 
         getSettingsFields: function () {
@@ -731,7 +732,8 @@
                 plugins: [],
                 stateId: stateId,
                 storeConfig: {
-                    filters: this._getFilters()
+                    filters: this._getFilters(),
+                    context: {project: null}
                 },
                 stateful: true,
                 showPagingToolbar: true
