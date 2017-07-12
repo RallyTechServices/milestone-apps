@@ -181,8 +181,8 @@
         },
         _getModelNames: function () {
             this.logger.log('_getModelNames',this.sModelNames);
-           // return this.sModelNames.concat(['HierarchicalRequirement','Defect','TestCase','TestSet']);
-            return ['HierarchicalRequirement','Defect','TestSet','TestCase'];
+            return this.sModelNames.concat(['HierarchicalRequirement','Defect','TestCase','TestSet']);
+          //  return ['HierarchicalRequirement','Defect','TestSet','TestCase'];
         },
 
         getSettingsFields: function () {

@@ -1,6 +1,6 @@
 (function () {
     var Ext = window.Ext4 || window.Ext;
-    
+
     /**
      * Iteration Tracking Board App
      * The Iteration Tracking Board can be used to visualize and manage your User Stories and Defects within an Iteration.
@@ -247,6 +247,7 @@
                     remoteSort: true,
                     root: {expanded: true},
                     enableHierarchy: true,
+                    context: {project: null}
                     //expandingNodesRespectProjectScoping: !this.getSetting('ignoreProjectScoping')
                 };
 
@@ -660,7 +661,7 @@
                 }
             ];
         },
-        
+
         _getExportColumns: function(){
             var grid = this.down('rallygridboard').getGridOrBoard();
             if (grid){
@@ -668,10 +669,10 @@
             }
             return [];
         },
-        
+
         _getExportFilters: function(){
             var filters = this._getFilters();
-            
+
             if ( ! Ext.isFunction(filters.and) ) {
                 if ( Ext.isArray(filters) ) {
                     filters = Rally.data.wsapi.Filter.and(filters);
@@ -679,12 +680,12 @@
                     filters = Ext.create('Rally.data.wsapi.Filter',filters);
                 }
             }
-            return filters; 
-            
+            return filters;
+
 //            var grid = this.down('rallygridboard'),
 //                filters = [],
 //                query = this.getSetting('query');
-//    
+//
 //            if (grid.currentCustomFilter && grid.currentCustomFilter.filters){
 //                filters = grid.currentCustomFilter.filters;
 //            }
@@ -697,7 +698,7 @@
 //            }
 //            return filters;
         },
-        
+
         _getExportFetch: function(){
             var fetch =  _.pluck(this._getExportColumns(), 'dataIndex');
             if (Ext.Array.contains(fetch, 'TaskActualTotal')){
@@ -722,33 +723,33 @@
                 Rally.ui.notify.Notifier.hide();
             }
         },
-        
+
         _export: function(args){
-    
+
             var columns = this._getExportColumns(),
                 fetch = this._getExportFetch(),
                 filters = this._getExportFilters(),
                 modelNames = this._getModelNames(),
                 childModels = args.childModels;
-    
+
             this.fetchPortfolioItemTypes().then({
                 scope: this,
                 success: function(pi_types) {
                     this.portfolioItemTypes = pi_types;
-                    
+
                     this.logger.log('_export', fetch, args, columns, childModels);
                     this.logger.log('_export Filters:', filters, filters.toString());
-            
+
                     var exporter = Ext.create('Rally.technicalservices.HierarchyExporter', {
                         fileName: 'milestone-tracking-export.csv',
                         columns: columns,
                         portfolioItemTypeObjects: this.portfolioItemTypes
-            
+
                     });
                     exporter.on('exportupdate', this._showStatus, this);
                     exporter.on('exporterror', this._showError, this);
                     exporter.on('exportcomplete', this._showStatus, this);
-            
+
                     var hierarchyLoader = Ext.create('Rally.technicalservices.HierarchyLoader',{
                         models: modelNames,
                         fetch: fetch,
@@ -767,7 +768,7 @@
                     Ext.Msg.alert('',msg);
                 }
             });
-            
+
         },
 
         _launchInfo: function() {
@@ -786,10 +787,10 @@
             this.down('#grid_box').removeAll();
             this._addComponents();
         },
-        
+
         fetchPortfolioItemTypes: function(){
             var deferred = Ext.create('Deft.Deferred');
-    
+
             var store = Ext.create('Rally.data.wsapi.Store', {
                 model: 'TypeDefinition',
                 fetch: ['TypePath', 'Ordinal','Name'],
@@ -812,7 +813,7 @@
             });
             store.load({
                 callback: function(records, operation, success){
-    
+
                     if (success){
                         var portfolioItemTypes = new Array(records.length);
                         _.each(records, function(d){
