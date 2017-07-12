@@ -3,11 +3,11 @@
 <head>
     <title>Milestone Tracking Board</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Apr 18 2017 15:32:20 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Jul 12 2017 12:32:52 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Apr 18 2017 15:32:20 GMT-0600 (MDT)";
-        var CHECKSUM = 257406110099;
+        var APP_BUILD_DATE = "Wed Jul 12 2017 12:32:52 GMT-0600 (MDT)";
+        var CHECKSUM = 257406098477;
     </script>
     
     <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
@@ -2592,8 +2592,8 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
         },
         _getModelNames: function () {
             this.logger.log('_getModelNames',this.sModelNames);
-           // return this.sModelNames.concat(['HierarchicalRequirement','Defect','TestCase','TestSet']);
-            return ['HierarchicalRequirement','Defect','TestSet','TestCase'];
+            return this.sModelNames.concat(['HierarchicalRequirement','Defect','TestCase','TestSet']);
+          //  return ['HierarchicalRequirement','Defect','TestSet','TestCase'];
         },
 
         getSettingsFields: function () {
@@ -3238,6 +3238,7 @@ Ext.override(Rally.ui.grid.FieldColumnFactory, {
         }
     });
 })();
+
             
                Rally.launchApp('technical-services-MilestoneTrackingApp', {
                    name: 'Milestone Tracking Board'
