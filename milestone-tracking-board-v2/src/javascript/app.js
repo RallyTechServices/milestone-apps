@@ -19,7 +19,8 @@
                 resolvedDefectValues: [],
                 displayTestCaseResultAttachments: true,
                 uatTestCaseType: 'Acceptance',
-                showStatsBanner: true
+                showStatsBanner: true,
+                collapseStatsBanner: false
             }
         },
         items: [
@@ -481,6 +482,7 @@
                 closedDefectStates: closedDefectStates,
                 resolvedDefectValues: resolvedDefectStates,
                 uatTestCaseType: uatTestTypes,
+                expanded: this.getSetting('collapseStatsBanner') !== true,
                 margin: '0 0 5px 0',
                 listeners: {
                     resize: this._resizeGridBoardToFillSpace,
