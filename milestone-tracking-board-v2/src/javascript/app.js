@@ -415,7 +415,7 @@
                 this._updateTestCases(this.testCaseResults, testCases);
             } else {
                 this.setLoading(true);
-                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters(),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments','TestSet']).then({
+                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters2(testCases),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments','TestSet']).then({
                     success: function(testCaseResults){
                         this.logger.log('_loadAttachmentsInformation load success', testCaseResults);
                         this.testCaseResults = testCaseResults;
