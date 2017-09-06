@@ -18,7 +18,9 @@
                 closedDefectStates: ['Closed'],
                 resolvedDefectValues: [],
                 displayTestCaseResultAttachments: true,
-                uatTestCaseType: 'Acceptance'
+                uatTestCaseType: 'Acceptance',
+                showStatsBanner: true,
+                collapseStatsBanner: false
             }
         },
         items: [
@@ -257,7 +259,15 @@
                 xtype: 'rallycheckboxfield',
                 labelWidth: labelWidth,
                 labelAlign: 'right',
-                label: 'Show TestCaseResult Attachments'
+                fieldLabel: 'Show TestCaseResult Attachments'
+            });
+
+            fields.push({
+              name: 'showStatsBanner',
+              xtype: 'rallycheckboxfield',
+              fieldLabel: 'Show Stats Banner',
+              labelWidth: labelWidth,
+              labelAlign: 'right'
             });
 
             return fields;
@@ -275,6 +285,38 @@
                 }]);
             }
             this.logger.log('_getFilters', filters.toString());
+
+
+
+            return filters;
+        },
+        _getTCRFilters2: function(testCases){
+            var filters = Ext.Array.map(testCases, function(tc){
+               return {
+                  property: 'TestCase.ObjectID',
+                  value: tc.get('ObjectID')
+               };
+            });
+
+            if (filters.length > 1){
+              filters = Rally.data.wsapi.Filter.or(filters);
+            }
+
+            // var filters = [];
+            // if (this._getTimeBoxRecord()){
+            //     var milestone = this._getTimeBoxRecord();
+            //     filters =  Rally.data.wsapi.Filter.or([{
+            //         property: 'TestCase.Milestones.ObjectID',
+            //         value:  milestone.get('ObjectID')
+            //     },{
+            //         property: 'TestCase.WorkProduct.Milestones.ObjectID',
+            //         value:  milestone.get('ObjectID')
+            //     }]);
+            // }
+            this.logger.log('_getFilters', filters.toString());
+
+
+
             return filters;
         },
         _getFilters: function(){
@@ -349,7 +391,7 @@
 
             _.each(testCases, function(tc){
                 var results = _.filter(testCaseResults, function(tcr){ return tcr.get('TestCase').ObjectID === tc.get('ObjectID'); }),
-                    resultsWithAttachments = _.filter(results, function(r){ return r.get('Attachments') && r.get('Attachments').Count > 0; });
+                    resultsWithAttachments = _.filter(results, function(r){ return (r.get('Attachments') && r.get('Attachments').Count > 0) || 0; });
                 tc.set('_showAttachments',displayTestCaseResultAttachments);
                 tc.set('resultsTotal',results.length);
                 tc.set('resultsWithAttachments',resultsWithAttachments.length);
@@ -375,11 +417,15 @@
             var testCases = _.filter(records, function(r){ return r.get('_type') === 'testcase'; });
             this.logger.log('_loadAttachmentInformation testCases', testCases.length);
 
+            if (!testCases || testCases.length === 0 ){
+                return;
+            }
+
             if (this.testCaseResults){
                 this._updateTestCases(this.testCaseResults, testCases);
             } else {
                 this.setLoading(true);
-                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters(),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments']).then({
+                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters2(testCases),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments','TestSet']).then({
                     success: function(testCaseResults){
                         this.logger.log('_loadAttachmentsInformation load success', testCaseResults);
                         this.testCaseResults = testCaseResults;
@@ -407,6 +453,9 @@
         },
         _addStatsBanner: function(customFilters) {
 
+            if (!this.getSetting('showStatsBanner')){
+               return;
+            }
             var closedDefectStates = this.getSetting('closedDefectStates') || [],
                 resolvedDefectStates = this.getSetting('resolvedDefectValues')|| [],
                 uatTestTypes = [this.getSetting('uatTestCaseType')];
@@ -433,6 +482,7 @@
                 closedDefectStates: closedDefectStates,
                 resolvedDefectValues: resolvedDefectStates,
                 uatTestCaseType: uatTestTypes,
+                expanded: this.getSetting('collapseStatsBanner') !== true,
                 margin: '0 0 5px 0',
                 listeners: {
                     resize: this._resizeGridBoardToFillSpace,

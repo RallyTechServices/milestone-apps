@@ -65,6 +65,7 @@ Ext.define('Rally.technicalservices.Utilities',{
             filters: query_filters,
             pageSize: 1000,
             limit: Infinity,
+            enablePostGet: true,
             context: {project: null} //here becuase we are looking for milestone specific infomration and that can be in any project now
         }).load({
             callback: function(records, operation, success){
