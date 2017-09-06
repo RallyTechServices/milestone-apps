@@ -86,6 +86,8 @@
                 "<li>Associated with an User Story that is explicitly associated with this Milestone</li>" +
                 "<li>Associated with a TestCase that is associated with an User Story that is explicity associated with this Milestone</li>" +
                 "</ol></p>"
+            // },{
+            //   xtype: 'statsbannercollapseexpand'
             }
         ],
 
@@ -152,13 +154,28 @@
                 store.fireEvent('datachanged');
 
             } else {
-                var filters =  Rally.data.wsapi.Filter.or([{
-                    property: 'TestCase.Milestones.ObjectID',
-                    value:  this.timeboxRecord.get('ObjectID')
-                },{
-                    property: 'TestCase.WorkProduct.Milestones.ObjectID',
-                    value:  this.timeboxRecord.get('ObjectID')
-                }]);
+                // var filters =  Rally.data.wsapi.Filter.or([{
+                //     property: 'TestCase.Milestones.ObjectID',
+                //     value:  this.timeboxRecord.get('ObjectID')
+                // },{
+                //     property: 'TestCase.WorkProduct.Milestones.ObjectID',
+                //     value:  this.timeboxRecord.get('ObjectID')
+                // }]);
+
+                var filters = Ext.Array.map(testCases, function(tc){
+                   return {
+                      property: 'TestCase.ObjectID',
+                      value: tc.get('ObjectID')
+                   };
+                });
+
+                if (filters.length > 1){
+                  filters = Rally.data.wsapi.Filter.or(filters);
+                }
+
+                if (filters.length === 0){
+                  return;  
+                }
 
                 Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',filters,['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments']).then({
                     success: function(testcaseResults){

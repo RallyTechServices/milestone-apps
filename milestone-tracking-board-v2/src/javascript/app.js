@@ -275,6 +275,38 @@
                 }]);
             }
             this.logger.log('_getFilters', filters.toString());
+
+
+
+            return filters;
+        },
+        _getTCRFilters2: function(testCases){
+            var filters = Ext.Array.map(testCases, function(tc){
+               return {
+                  property: 'TestCase.ObjectID',
+                  value: tc.get('ObjectID')
+               };
+            });
+
+            if (filters.length > 1){
+              filters = Rally.data.wsapi.Filter.or(filters);
+            }
+
+            // var filters = [];
+            // if (this._getTimeBoxRecord()){
+            //     var milestone = this._getTimeBoxRecord();
+            //     filters =  Rally.data.wsapi.Filter.or([{
+            //         property: 'TestCase.Milestones.ObjectID',
+            //         value:  milestone.get('ObjectID')
+            //     },{
+            //         property: 'TestCase.WorkProduct.Milestones.ObjectID',
+            //         value:  milestone.get('ObjectID')
+            //     }]);
+            // }
+            this.logger.log('_getFilters', filters.toString());
+
+
+
             return filters;
         },
         _getFilters: function(){
