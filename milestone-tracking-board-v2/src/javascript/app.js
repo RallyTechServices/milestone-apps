@@ -349,7 +349,7 @@
 
             _.each(testCases, function(tc){
                 var results = _.filter(testCaseResults, function(tcr){ return tcr.get('TestCase').ObjectID === tc.get('ObjectID'); }),
-                    resultsWithAttachments = _.filter(results, function(r){ return r.get('Attachments') && r.get('Attachments').Count > 0; });
+                    resultsWithAttachments = _.filter(results, function(r){ return (r.get('Attachments') && r.get('Attachments').Count > 0) || 0; });
                 tc.set('_showAttachments',displayTestCaseResultAttachments);
                 tc.set('resultsTotal',results.length);
                 tc.set('resultsWithAttachments',resultsWithAttachments.length);
@@ -375,11 +375,15 @@
             var testCases = _.filter(records, function(r){ return r.get('_type') === 'testcase'; });
             this.logger.log('_loadAttachmentInformation testCases', testCases.length);
 
+            if (!testCases || testCases.length === 0 ){
+                return;
+            }
+
             if (this.testCaseResults){
                 this._updateTestCases(this.testCaseResults, testCases);
             } else {
                 this.setLoading(true);
-                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters(),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments']).then({
+                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters(),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments','TestSet']).then({
                     success: function(testCaseResults){
                         this.logger.log('_loadAttachmentsInformation load success', testCaseResults);
                         this.testCaseResults = testCaseResults;

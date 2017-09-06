@@ -3,25 +3,5 @@
    "className": "technical-services-MilestoneTrackingApp",
    "server": "https://rally1.rallydev.com",
    "sdk": "2.1",
-   "apiKey": "_PUT_APIKEY_HERE_",
-   "javascript": [
-      "__ts-info-link.js",
-      "__ts-logger.js",
-      "utilities.js",
-      "milestone-combobox-override.js",
-      "chunker-store.js",
-      "overrides.js",
-      "statsbanner.js",
-      "statsbanner-widget.js",
-      "statsbanner-gauge.js",
-      "statsbanner-configurable-gauge.js",
-      "statsbanner-accepted.js",
-      "statsbanner-defects.js",
-      "statsbanner-testcases.js",
-      "statsbanner-testcoverage.js",
-      "statsbanner-collapseexpand.js",
-      "statsbanner-latestories.js",
-      "statsbanner-timeboxend.js",
-      "app.js"
-   ]
+   "apiKey": "_PUT_APIKEY_HERE_"
 }
