@@ -18,7 +18,8 @@
                 closedDefectStates: ['Closed'],
                 resolvedDefectValues: [],
                 displayTestCaseResultAttachments: true,
-                uatTestCaseType: 'Acceptance'
+                uatTestCaseType: 'Acceptance',
+                showStatsBanner: false
             }
         },
         items: [
@@ -257,7 +258,15 @@
                 xtype: 'rallycheckboxfield',
                 labelWidth: labelWidth,
                 labelAlign: 'right',
-                label: 'Show TestCaseResult Attachments'
+                fieldLabel: 'Show TestCaseResult Attachments'
+            });
+
+            fields.push({
+              name: 'showStatsBanner',
+              xtype: 'rallycheckboxfield',
+              fieldLabel: 'Show Stats Banner',
+              labelWidth: labelWidth,
+              labelAlign: 'right'
             });
 
             return fields;
@@ -443,6 +452,9 @@
         },
         _addStatsBanner: function(customFilters) {
 
+            if (!this.getSetting('showStatsBanner')){
+               return;  
+            }
             var closedDefectStates = this.getSetting('closedDefectStates') || [],
                 resolvedDefectStates = this.getSetting('resolvedDefectValues')|| [],
                 uatTestTypes = [this.getSetting('uatTestCaseType')];
