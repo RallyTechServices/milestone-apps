@@ -19,7 +19,7 @@
                 resolvedDefectValues: [],
                 displayTestCaseResultAttachments: true,
                 uatTestCaseType: 'Acceptance',
-                showStatsBanner: false
+                showStatsBanner: true
             }
         },
         items: [
@@ -453,7 +453,7 @@
         _addStatsBanner: function(customFilters) {
 
             if (!this.getSetting('showStatsBanner')){
-               return;  
+               return;
             }
             var closedDefectStates = this.getSetting('closedDefectStates') || [],
                 resolvedDefectStates = this.getSetting('resolvedDefectValues')|| [],
