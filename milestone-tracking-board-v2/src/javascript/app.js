@@ -92,24 +92,28 @@
             });
 
             this.logger.log('filters', filters.toString());
-            var cb = this.down('#selection_box').add({
-                xtype: 'rallymilestonecombobox',
-                stateful: true,
-                stateId: this.getContext().getScopedStateId('milestone-cb'),
-                emptyText: 'Select a Milestone...',
-                storeConfig: {
-                    filters: filters,
-                    remoteFilter: true,
-                    limit: 'Infinity',
-                    pageSize: 200
-                }
-            });
-            cb.on('select', this._update, this);
-            cb.on('ready', this._update, this);
+            if (!this._hasMilestoneScope()){
+              var cb = this.down('#selection_box').add({
+                  xtype: 'rallymilestonecombobox',
+                  stateful: true,
+                  stateId: this.getContext().getScopedStateId('milestone-cb'),
+                  emptyText: 'Select a Milestone...',
+                  storeConfig: {
+                      filters: filters,
+                      remoteFilter: true,
+                      limit: 'Infinity',
+                      pageSize: 200
+                  }
+              });
+              cb.on('select', this._update, this);
+              cb.on('ready', this._update, this);
+            }
 
             var tpl = new Ext.XTemplate('<div class="selector-msg"><tpl if="days &gt;= 0">Target Date: {targetDate} ({days} days remaining)',
                 '<tpl elseif="days &lt; 0">Target Date: {targetDate} <span style="color:red;">({days*(-1)} days past)</span>',
-                '<tpl else><span style="color:red;">No target date set for milestone</span></tpl></div>');
+                '<tpl elseif="message"><span style="color:#888888;">{message}</span>',
+                '<tpl else><span style="color:red;">No target date set for milestone</span></tpl></div>'
+              );
 
             this.down('#selection_box').add({
                 xtype: 'container',
@@ -137,6 +141,10 @@
                     }
                 }
             });
+
+            if (this._hasMilestoneScope()){
+               this._update();
+            }
         },
 
         _showLateStoriesPopover: function(event, target){
@@ -168,6 +176,7 @@
             var rec = this._getTimeBoxRecord();
             this.logger.log('_update', rec);
             if (!rec){
+               this.down('#remaining-days').update({message: "No Milestone selected."});
                 return;
             }
 
@@ -345,11 +354,28 @@
             }
             return null;
         },
+
         _getTimeBoxRecord: function(){
             if (this.down('rallymilestonecombobox') && this.down('rallymilestonecombobox').getRecord()){
                 return this.down('rallymilestonecombobox').getRecord();
             }
+            if (this._hasMilestoneScope()){
+               return this.getContext().getTimeboxScope().getRecord() || null;
+            }
             return null;
+        },
+        _hasMilestoneScope: function(){
+          this.logger.log('_hasMilestoneScope', this.getContext().getTimeboxScope());
+            if (this.getContext().getTimeboxScope() && this.getContext().getTimeboxScope().type.toLowerCase() === 'milestone'){
+               return true;
+            }
+            return false;
+        },
+        onTimeboxScopeChange: function(timeboxScope) {
+            if(timeboxScope && timeboxScope.getType().toLowerCase() === 'milestone') {
+                this.callParent(arguments);
+                this._update()
+            }
         },
         _getGridStore: function() {
             var config = {
