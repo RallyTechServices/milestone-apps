@@ -43,6 +43,10 @@
                 return;
             }
 
+            if (this._hasMilestoneScope() && this._getTimeBoxRecord() === null){
+               this.on('ready', this._update, this);
+            }
+
             Rally.data.ModelFactory.getModel({
                 type: 'Defect',
                 success: function(defectModel) {
