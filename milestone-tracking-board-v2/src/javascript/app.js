@@ -354,6 +354,7 @@
             if (this.down('rallymilestonecombobox') && this.down('rallymilestonecombobox').getRecord()){
                 return this.down('rallymilestonecombobox').getRecord();
             }
+            this.logger.log('_getTimeboxRecord', this.getContext().getTimeboxScope());
             if (this._hasMilestoneScope()){
                return this.getContext().getTimeboxScope().getRecord() || null;
             }
@@ -773,15 +774,24 @@
         //         context: context
         //     };
         // },
-
+        _getDefaultColumns: function(){
+           var cols = this.getSetting('defaultColumns');
+           if (!Ext.isArray(cols)){
+              cols = cols.split(',');
+           }
+           if (cols.length === 0){
+              cols.push('Name');
+           }
+           return cols;
+        },
         _getGridConfig: function (gridStore) {
             var context = this.getContext(),
                 stateString = 'milestone-tracking',
                 stateId = context.getScopedStateId(stateString);
-            this.logger.log('_getGridConfig', this.getSetting('defaultColumns'));
+            this.logger.log('_getGridConfig', this._getDefaultColumns());
             var gridConfig = {
                 store: gridStore,
-                columnCfgs: this.getSetting('defaultColumns'), //must set this to null to offset default behaviors in the gridboard
+                columnCfgs: this._getDefaultColumns(), //must set this to null to offset default behaviors in the gridboard
                 defaultColumnCfgs: this._getGridColumns(),
                 plugins: [],
                 stateId: stateId,
@@ -830,8 +840,7 @@
 
         _getGridColumns: function (columns) {
 
-            var result = ['FormattedID', 'Name', 'PercentDoneByStoryPlanEstimate', 'PreliminaryEstimate', 'ScheduleState', 'PlanEstimate', 'Blocked', 'Iteration', 'Owner', 'Discussion'];
-            var result = this.getSetting('defaultColumns');
+            var result = this._getDefaultColumns();
 
             if (columns) {
                 result = columns;
