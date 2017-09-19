@@ -49,6 +49,10 @@ are in a state considered "Closed" (as configured in the App Settings)
 
 ![ScreenShot](/images/milestone-tracking-board-v2-settings.png)
 
+Default Fields  - This determines the fields that show up by default when the app is first loaded.  Once a user selects different fields with the field picker, that will become their default view.  
+
 Closed Defect States - determines which defect states are considered "Closed".  Defaults to "Closed"
+
 Exclude Defects with Resolution - determines which defects are excluded from the defect data set.  Defaults to None.
+
 Show Test Case Result Attachments - If selected, will show the number of TestCaseResults with at least 1 Attachment for the TestCase in the format of "2/3" meaning "2 of 3 TestCaseResults has at least 1 attachment".
