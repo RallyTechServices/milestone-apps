@@ -1,5 +1,5 @@
 #Milestone Tracking Board (version 2)
-Shows the User Stories, Defects and lowest level portfolio items associated with the selected milestone.  
+Shows the User Stories, Defects and all portfolio items associated with the selected milestone.  
 
 ![ScreenShot](/images/milestone-tracking-board-v2.png)
 
