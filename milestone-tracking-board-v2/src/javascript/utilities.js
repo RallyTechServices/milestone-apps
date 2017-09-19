@@ -24,7 +24,6 @@ Ext.define('Rally.technicalservices.Utilities',{
         typeStore.load({
             scope: this,
             callback: function (records, operation, success) {
-                console.log('callback', operation, success);
                 if (success){
                     deferred.resolve(records);
 

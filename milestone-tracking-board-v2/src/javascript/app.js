@@ -20,7 +20,8 @@
                 displayTestCaseResultAttachments: true,
                 uatTestCaseType: 'Acceptance',
                 showStatsBanner: true,
-                collapseStatsBanner: false
+                collapseStatsBanner: false,
+                defaultColumns: ['Name','PercentDoneByStoryPlanEstimate','Owner','Release','State','ScheduleState','Iteration','PlanEstimate']
             }
         },
         items: [
@@ -57,7 +58,7 @@
                         scope: this,
                         success: function(results){
                             this.logger.log('results',results);
-                            this.sModelNames = Ext.Array.from(_.first(results[1]).get('TypePath'));
+                            this.sModelNames = Ext.Array.map(results[1], function(r){ return r.get('TypePath'); })//Ext.Array.from(_.first(results[1]).get('TypePath'));
                             this.scheduleStates = results[0];
                             this.defectStates = results[2];
                             this.defectResolutions = results[3];
@@ -225,6 +226,17 @@
             });
 
             fields.push({
+               name: 'defaultColumns',
+               xtype: 'rallyfieldpicker',
+               fieldLabel: 'Default Fields',
+               labelWidth: labelWidth,
+               labelAlign: 'right',
+               modelTypes: this._getModelNames(),
+               autoExpand: true,
+               width: 500
+            });
+
+            fields.push({
                 xtype: 'checkboxgroup',
                 fieldLabel: 'Closed Defect States',
                 labelWidth: labelWidth,
@@ -279,6 +291,7 @@
               labelAlign: 'right'
             });
 
+
             return fields;
         },
         _getTCRFilters: function(){
@@ -294,9 +307,6 @@
                 }]);
             }
             this.logger.log('_getFilters', filters.toString());
-
-
-
             return filters;
         },
         _getTCRFilters2: function(testCases){
@@ -310,22 +320,7 @@
             if (filters.length > 1){
               filters = Rally.data.wsapi.Filter.or(filters);
             }
-
-            // var filters = [];
-            // if (this._getTimeBoxRecord()){
-            //     var milestone = this._getTimeBoxRecord();
-            //     filters =  Rally.data.wsapi.Filter.or([{
-            //         property: 'TestCase.Milestones.ObjectID',
-            //         value:  milestone.get('ObjectID')
-            //     },{
-            //         property: 'TestCase.WorkProduct.Milestones.ObjectID',
-            //         value:  milestone.get('ObjectID')
-            //     }]);
-            // }
             this.logger.log('_getFilters', filters.toString());
-
-
-
             return filters;
         },
         _getFilters: function(){
@@ -378,17 +373,16 @@
             }
         },
         _getGridStore: function() {
+          this.logger.log('_getGridStore', this._getModelNames().length);
             var config = {
                     models: this._getModelNames(),
                     autoLoad: false,
                     remoteSort: true,
-                    pageSize: 200,
-                    limit: 'Infinity',
                     root: {expanded: true},
                     enableHierarchy: true,
                     context: {project: null}
                 };
-
+            this.logger.log('_getGridStore', config);
             config.filters = this._getFilters();
             this.testCaseResults = null;  //clear this out so that we populate it correctly....
 
@@ -525,8 +519,6 @@
         _addGridBoard: function (gridStore) {
             var context = this.getContext();
 
-
-
             this.logger.log('_addGridboard', context);
             this.gridboard = this.add({
                 itemId: 'gridBoard',
@@ -574,60 +566,42 @@
                 alwaysSelectedValues.push('DragAndDropRank');
             }
 
+
+
             plugins.push({
-                ptype: 'rallygridboardfilterinfo',
-                isGloballyScoped: Ext.isEmpty(this.getSetting('project')),
-                stateId: 'iteration-tracking-owner-filter-' + this.getAppId()
+                  ptype: 'rallygridboardinlinefiltercontrol',
+                 inlineFilterButtonConfig: {
+                     modelNames: this._getModelNames(),
+                     inlineFilterPanelConfig: {
+                         collapsed: true,
+                         quickFilterPanelConfig: {
+                             defaultFields: ['ArtifactSearch','ModelType']
+                         }
+                     }
+                 }
             });
 
             plugins.push({
                 ptype: 'rallygridboardfieldpicker',
-                headerPosition: 'left',
-                gridFieldBlackList: [
-                    'ObjectID',
-                    'Description',
-                    'DisplayColor',
-                    'Notes',
-                    'Subscription',
-                    'Workspace',
-                    'Changesets',
-                    'RevisionHistory',
-                    'Children'
-                ],
-                boardFieldBlackList: [
-                    'ObjectID',
-                    'Description',
-                    'DisplayColor',
-                    'Notes',
-                    'Rank',
-                    'DragAndDropRank',
-                    'Subscription',
-                    'Workspace',
-                    'Changesets',
-                    'RevisionHistory',
-                    'PortfolioItemType',
-                    'StateChangedDate',
-                    'Children'
-                ],
-                alwaysSelectedValues: alwaysSelectedValues,
-                modelNames: this.modelNames,
-                boardFieldDefaults: (this.getSetting('cardFields') && this.getSetting('cardFields').split(',')) ||
-                ['Parent', 'Tasks', 'Defects', 'Discussion', 'PlanEstimate', 'Iteration']
+               headerPosition: 'left',
+               modelNames: this._getModelNames(),
+               stateful: true,
+               stateId: context.getScopedStateId('milestone-columns')
             });
 
-            plugins.push({
-                ptype: 'rallygridboardcustomfiltercontrol',
-                filterControlConfig: {
-                    modelNames: this._getModelNames(),
-                    stateful: true,
-                    stateId: context.getScopedStateId('tracking-filters')
-                },
-                showOwnerFilter: true,
-                ownerFilterControlConfig: {
-                    stateful: true,
-                    stateId: context.getScopedStateId('tracking-owner-filter')
-                }
-            });
+            // plugins.push({
+            //     ptype: 'rallygridboardcustomfiltercontrol',
+            //     filterControlConfig: {
+            //         modelNames: this._getModelNames(),
+            //         stateful: true,
+            //         stateId: context.getScopedStateId('tracking-filters')
+            //     },
+            //     showOwnerFilter: true,
+            //     ownerFilterControlConfig: {
+            //         stateful: true,
+            //         stateId: context.getScopedStateId('tracking-owner-filter')
+            //     }
+            // });
 
             plugins.push({
                 ptype: 'rallygridboardactionsmenu',
@@ -660,154 +634,154 @@
             }
         },
 
-        _getCustomViewConfig: function() {
-            var customViewConfig = {
-                ptype: 'rallygridboardcustomview',
-                stateId: 'iteration-tracking-board-app',
+        // _getCustomViewConfig: function() {
+        //     var customViewConfig = {
+        //         ptype: 'rallygridboardcustomview',
+        //         stateId: 'iteration-tracking-board-app',
+        //
+        //         defaultGridViews: [{
+        //             model: ['UserStory', 'Defect', 'DefectSuite'],
+        //             name: 'Defect Status',
+        //             state: {
+        //                 cmpState: {
+        //                     expandAfterApply: true,
+        //                     columns: [
+        //                         'Name',
+        //                         'State',
+        //                         'Discussion',
+        //                         'Priority',
+        //                         'Severity',
+        //                         'FoundIn',
+        //                         'FixedIn',
+        //                         'Owner'
+        //                     ]
+        //                 },
+        //                 filterState: {
+        //                     filter: {
+        //                         defectstatusview: {
+        //                             isActiveFilter: false,
+        //                             itemId: 'defectstatusview',
+        //                             queryString: '((Defects.ObjectID != null) OR (Priority != null))'
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }, {
+        //             model: ['UserStory', 'Defect', 'TestSet', 'DefectSuite'],
+        //             name: 'Task Status',
+        //             state: {
+        //                 cmpState: {
+        //                     expandAfterApply: true,
+        //                     columns: [
+        //                         'Name',
+        //                         'State',
+        //                         'PlanEstimate',
+        //                         'TaskEstimate',
+        //                         'ToDo',
+        //                         'Discussions',
+        //                         'Owner'
+        //                     ]
+        //                 },
+        //                 filterState: {
+        //                     filter: {
+        //                         taskstatusview: {
+        //                             isActiveFilter: false,
+        //                             itemId: 'taskstatusview',
+        //                             queryString: '(Tasks.ObjectID != null)'
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }, {
+        //             model: ['UserStory', 'Defect', 'TestSet'],
+        //             name: 'Test Status',
+        //             state: {
+        //                 cmpState: {
+        //                     expandAfterApply: true,
+        //                     columns: [
+        //                         'Name',
+        //                         'State',
+        //                         'Discussions',
+        //                         'LastVerdict',
+        //                         'LastBuild',
+        //                         'LastRun',
+        //                         'ActiveDefects',
+        //                         'Priority',
+        //                         'Owner'
+        //                     ]
+        //                 },
+        //                 filterState: {
+        //                     filter: {
+        //                         teststatusview: {
+        //                             isActiveFilter: false,
+        //                             itemId: 'teststatusview',
+        //                             queryString: '(TestCases.ObjectID != null)'
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }]
+        //     };
+        //
+        //     customViewConfig.defaultBoardViews = _.cloneDeep(customViewConfig.defaultGridViews);
+        //     _.each(customViewConfig.defaultBoardViews, function(view) {
+        //         delete view.state.cmpState;
+        //     });
+        //
+        //     return customViewConfig;
+        // },
 
-                defaultGridViews: [{
-                    model: ['UserStory', 'Defect', 'DefectSuite'],
-                    name: 'Defect Status',
-                    state: {
-                        cmpState: {
-                            expandAfterApply: true,
-                            columns: [
-                                'Name',
-                                'State',
-                                'Discussion',
-                                'Priority',
-                                'Severity',
-                                'FoundIn',
-                                'FixedIn',
-                                'Owner'
-                            ]
-                        },
-                        filterState: {
-                            filter: {
-                                defectstatusview: {
-                                    isActiveFilter: false,
-                                    itemId: 'defectstatusview',
-                                    queryString: '((Defects.ObjectID != null) OR (Priority != null))'
-                                }
-                            }
-                        }
-                    }
-                }, {
-                    model: ['UserStory', 'Defect', 'TestSet', 'DefectSuite'],
-                    name: 'Task Status',
-                    state: {
-                        cmpState: {
-                            expandAfterApply: true,
-                            columns: [
-                                'Name',
-                                'State',
-                                'PlanEstimate',
-                                'TaskEstimate',
-                                'ToDo',
-                                'Discussions',
-                                'Owner'
-                            ]
-                        },
-                        filterState: {
-                            filter: {
-                                taskstatusview: {
-                                    isActiveFilter: false,
-                                    itemId: 'taskstatusview',
-                                    queryString: '(Tasks.ObjectID != null)'
-                                }
-                            }
-                        }
-                    }
-                }, {
-                    model: ['UserStory', 'Defect', 'TestSet'],
-                    name: 'Test Status',
-                    state: {
-                        cmpState: {
-                            expandAfterApply: true,
-                            columns: [
-                                'Name',
-                                'State',
-                                'Discussions',
-                                'LastVerdict',
-                                'LastBuild',
-                                'LastRun',
-                                'ActiveDefects',
-                                'Priority',
-                                'Owner'
-                            ]
-                        },
-                        filterState: {
-                            filter: {
-                                teststatusview: {
-                                    isActiveFilter: false,
-                                    itemId: 'teststatusview',
-                                    queryString: '(TestCases.ObjectID != null)'
-                                }
-                            }
-                        }
-                    }
-                }]
-            };
+        // _createOwnerFilterItem: function (context) {
+        //     var isPillPickerEnabled = context.isFeatureEnabled('BETA_TRACKING_EXPERIENCE'),
+        //         projectRef = context.getProjectRef();
+        //
+        //     if (isPillPickerEnabled) {
+        //         return {
+        //             xtype: 'rallyownerpillfilter',
+        //             margin: '-15 0 5 0',
+        //             filterChildren: this.getContext().isFeatureEnabled('S58650_ALLOW_WSAPI_TRAVERSAL_FILTER_FOR_MULTIPLE_TYPES'),
+        //             project: projectRef,
+        //             showPills: false,
+        //             showClear: true
+        //         };
+        //     } else {
+        //         return {
+        //             xtype: 'rallyownerfilter',
+        //             margin: '5 0 5 0',
+        //             filterChildren: this.getContext().isFeatureEnabled('S58650_ALLOW_WSAPI_TRAVERSAL_FILTER_FOR_MULTIPLE_TYPES'),
+        //             project: projectRef
+        //         };
+        //     }
+        //
+        // },
 
-            customViewConfig.defaultBoardViews = _.cloneDeep(customViewConfig.defaultGridViews);
-            _.each(customViewConfig.defaultBoardViews, function(view) {
-                delete view.state.cmpState;
-            });
+        // _createTagFilterItem: function (context) {
+        //     var filterUiImprovementsToggleEnabled = context.isFeatureEnabled('BETA_TRACKING_EXPERIENCE');
+        //     return {
+        //         xtype: 'rallytagpillfilter',
+        //         margin: filterUiImprovementsToggleEnabled ? '-15 0 5 0' : '5 0 5 0',
+        //         showPills: filterUiImprovementsToggleEnabled,
+        //         showClear: filterUiImprovementsToggleEnabled,
+        //         remoteFilter: filterUiImprovementsToggleEnabled
+        //     };
+        // },
 
-            return customViewConfig;
-        },
-
-        _createOwnerFilterItem: function (context) {
-            var isPillPickerEnabled = context.isFeatureEnabled('BETA_TRACKING_EXPERIENCE'),
-                projectRef = context.getProjectRef();
-
-            if (isPillPickerEnabled) {
-                return {
-                    xtype: 'rallyownerpillfilter',
-                    margin: '-15 0 5 0',
-                    filterChildren: this.getContext().isFeatureEnabled('S58650_ALLOW_WSAPI_TRAVERSAL_FILTER_FOR_MULTIPLE_TYPES'),
-                    project: projectRef,
-                    showPills: false,
-                    showClear: true
-                };
-            } else {
-                return {
-                    xtype: 'rallyownerfilter',
-                    margin: '5 0 5 0',
-                    filterChildren: this.getContext().isFeatureEnabled('S58650_ALLOW_WSAPI_TRAVERSAL_FILTER_FOR_MULTIPLE_TYPES'),
-                    project: projectRef
-                };
-            }
-
-        },
-
-        _createTagFilterItem: function (context) {
-            var filterUiImprovementsToggleEnabled = context.isFeatureEnabled('BETA_TRACKING_EXPERIENCE');
-            return {
-                xtype: 'rallytagpillfilter',
-                margin: filterUiImprovementsToggleEnabled ? '-15 0 5 0' : '5 0 5 0',
-                showPills: filterUiImprovementsToggleEnabled,
-                showClear: filterUiImprovementsToggleEnabled,
-                remoteFilter: filterUiImprovementsToggleEnabled
-            };
-        },
-
-        _createModelFilterItem: function (context) {
-            return {
-                xtype: 'rallymodelfilter',
-                models: this.modelNames,
-                context: context
-            };
-        },
+        // _createModelFilterItem: function (context) {
+        //     return {
+        //         xtype: 'rallymodelfilter',
+        //         models: this._getModelNames(),
+        //         context: context
+        //     };
+        // },
 
         _getGridConfig: function (gridStore) {
             var context = this.getContext(),
-                stateString = 'release-tracking',
+                stateString = 'milestone-tracking',
                 stateId = context.getScopedStateId(stateString);
-
+            this.logger.log('_getGridConfig', this.getSetting('defaultColumns'));
             var gridConfig = {
                 store: gridStore,
-                columnCfgs: ['Name'], //must set this to null to offset default behaviors in the gridboard
+                columnCfgs: this.getSetting('defaultColumns'), //must set this to null to offset default behaviors in the gridboard
                 defaultColumnCfgs: this._getGridColumns(),
                 plugins: [],
                 stateId: stateId,
@@ -855,7 +829,9 @@
         },
 
         _getGridColumns: function (columns) {
+
             var result = ['FormattedID', 'Name', 'PercentDoneByStoryPlanEstimate', 'PreliminaryEstimate', 'ScheduleState', 'PlanEstimate', 'Blocked', 'Iteration', 'Owner', 'Discussion'];
+            var result = this.getSetting('defaultColumns');
 
             if (columns) {
                 result = columns;
@@ -864,9 +840,6 @@
 
             return result;
         },
-
-
-
 
         _onBoardFilter: function () {
             this.setLoading(true);
