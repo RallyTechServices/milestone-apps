@@ -374,7 +374,7 @@
         onTimeboxScopeChange: function(timeboxScope) {
             if(timeboxScope && timeboxScope.getType().toLowerCase() === 'milestone') {
                 this.callParent(arguments);
-                this._update()
+                this._update();
             }
         },
         _getGridStore: function() {
@@ -432,7 +432,6 @@
                 this._addStatsBanner(grid.currentCustomFilter);
             }
         },
-
         _loadAttachmentInformation: function(store, node, records){
             this.logger.log('_loadAttachmentInformation', store , records);
 
@@ -442,7 +441,7 @@
             var testCases = _.filter(records, function(r){ return r.get('_type') === 'testcase'; });
             this.logger.log('_loadAttachmentInformation testCases', testCases.length);
 
-            if (!testCases || testCases.length === 0 ){
+            if (!testCases || testCases.length == 0){
                 return;
             }
 
@@ -450,7 +449,7 @@
                 this._updateTestCases(this.testCaseResults, testCases);
             } else {
                 this.setLoading(true);
-                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters2(testCases),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments','TestSet']).then({
+                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters(),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments','TestSet']).then({
                     success: function(testCaseResults){
                         this.logger.log('_loadAttachmentsInformation load success', testCaseResults);
                         this.testCaseResults = testCaseResults;
@@ -570,8 +569,6 @@
             if (context.getWorkspace().WorkspaceConfiguration.DragDropRankingEnabled) {
                 alwaysSelectedValues.push('DragAndDropRank');
             }
-
-
 
             plugins.push({
                   ptype: 'rallygridboardinlinefiltercontrol',
