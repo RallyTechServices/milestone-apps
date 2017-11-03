@@ -302,15 +302,19 @@
             var filters = [];
             if (this._getTimeBoxRecord()){
                 var milestone = this._getTimeBoxRecord();
-                filters =  Rally.data.wsapi.Filter.or([{
-                    property: 'TestCase.Milestones.ObjectID',
-                    value:  milestone.get('ObjectID')
-                },{
-                    property: 'TestCase.WorkProduct.Milestones.ObjectID',
-                    value:  milestone.get('ObjectID')
-                }]);
+                filters = Ext.create('Rally.data.wsapi.Filter',{
+                  property: 'TestCase.WorkProduct.Milestones.ObjectID',
+                  value:  milestone.get('ObjectID')
+                });
+                // filters =  Rally.data.wsapi.Filter.or([{
+                //     property: 'TestCase.Milestones.ObjectID',
+                //     value:  milestone.get('ObjectID')
+                // },{
+                //     property: 'TestCase.WorkProduct.Milestones.ObjectID',
+                //     value:  milestone.get('ObjectID')
+                // }]);
             }
-            this.logger.log('_getFilters', filters.toString());
+            this.logger.log('_getTCRFilters', filters.toString());
             return filters;
         },
         _getTCRFilters2: function(testCases){
@@ -331,20 +335,40 @@
             var filters = [];
             if (this._getTimeBoxRecord()){
                 var milestone = this._getTimeBoxRecord();
-
+                var milestoneRef = Rally.util.Ref.getRelativeUri(milestone.get('_ref'));
                 filters =  Rally.data.wsapi.Filter.or([{
-                    property: "Milestones.ObjectID",
-                    value: milestone.get('ObjectID')
+                    property: "Milestones",
+                    value: milestoneRef
                 },{
-                    property: 'Requirement.Milestones.ObjectID',
-                    value:  milestone.get('ObjectID')
+                    property: 'Requirement.Milestones',
+                    value:  milestoneRef
                 },{
-                    property: 'WorkProduct.Milestones.ObjectID',
-                    value:  milestone.get('ObjectID')
+                    property: 'WorkProduct.Milestones',
+                    value:  milestoneRef
                 }]);
             }
             this.logger.log('_getFilters', filters.toString());
             return filters;
+        },
+        _getTestCaseFilters: function(){
+          var filters = [];
+          if (this._getTimeBoxRecord()){
+              var milestone = this._getTimeBoxRecord();
+              filters = Ext.create('Rally.data.wsapi.Filter',{
+                     property: 'WorkProduct.Milestones.ObjectID',
+                     value:  milestone.get('ObjectID')
+              });
+              // filters =  Rally.data.wsapi.Filter.or([{
+              //     property: "Milestones.ObjectID",
+              //     value: milestone.get('ObjectID')
+              // },{
+              //     property: 'WorkProduct.Milestones.ObjectID',
+              //     value:  milestone.get('ObjectID')
+              //   }]);
+             }
+
+              this.logger.log('_getTestCaseFilters', filters.toString());
+              return filters;
         },
         _getMilestoneRef: function(){
             var rec = this._getTimeBoxRecord();
@@ -449,21 +473,48 @@
                 this._updateTestCases(this.testCaseResults, testCases);
             } else {
                 this.setLoading(true);
-                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters(),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments','TestSet']).then({
-                    success: function(testCaseResults){
-                        this.logger.log('_loadAttachmentsInformation load success', testCaseResults);
-                        this.testCaseResults = testCaseResults;
-                        this._updateTestCases(testCaseResults, testCases);
-                        this.getStatsBanner() && this.getStatsBanner().addTestCaseResults(testCaseResults);
+                Rally.technicalservices.Utilities.fetchWsapiRecords('TestCase',this._getTestCaseFilters(),['ObjectID']).then({
+                    success: function(testCases){
+                      Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters2(testCases),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments','TestSet']).then({
+                          success: function(testCaseResults){
+                              this.logger.log('_loadAttachmentsInformation load success', testCaseResults);
+                              this.testCaseResults = testCaseResults;
+                              this._updateTestCases(testCaseResults, testCases);
+                              this.getStatsBanner() && this.getStatsBanner().addTestCaseResults(testCaseResults);
+                          },
+                          failure: function(msg){
+                              Rally.ui.notify.Notifier.showError({message: "Error loading Test Case Result Attachment Information:  " + msg});
+                              this.logger.log('_loadAttachmentsInformation load error', msg)
+                          },
+                          scope: this
+                      }).always(function(){
+                          this.setLoading(false);
+                      },this);
+
                     },
                     failure: function(msg){
-                        Rally.ui.notify.Notifier.showError({message: "Error loading Test Case Result Attachment Information:  " + msg});
-                        this.logger.log('_loadAttachmentsInformation load error', msg)
+                      Rally.ui.notify.Notifier.showError({message: "Error loading ALL Test Cases for Milestone:  " + msg});
+                      this.logger.log('_loadAttachmentsInformation load error', msg);
+                      this.setLoading(false);
                     },
                     scope: this
-                }).always(function(){
-                    this.setLoading(false);
-                },this);
+                });
+
+                // Rally.technicalservices.Utilities.fetchWsapiRecords('TestCaseResult',this._getTCRFilters(),['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments','TestSet']).then({
+                //     success: function(testCaseResults){
+                //         this.logger.log('_loadAttachmentsInformation load success', testCaseResults);
+                //         this.testCaseResults = testCaseResults;
+                //         this._updateTestCases(testCaseResults, testCases);
+                //         this.getStatsBanner() && this.getStatsBanner().addTestCaseResults(testCaseResults);
+                //     },
+                //     failure: function(msg){
+                //         Rally.ui.notify.Notifier.showError({message: "Error loading Test Case Result Attachment Information:  " + msg});
+                //         this.logger.log('_loadAttachmentsInformation load error', msg)
+                //     },
+                //     scope: this
+                // }).always(function(){
+                //     this.setLoading(false);
+                // },this);
             }
 
         },
