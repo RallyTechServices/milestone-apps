@@ -364,7 +364,8 @@
                 model: 'TestCaseResult',
                 filters: filters,
                 fetch: ['ObjectID', 'TestCase','WorkProduct','FormattedID','Attachments'],
-                context: this.context.getDataContext(),
+                //context: this.context.getDataContext(),
+                context: {project: null},
                 pageSize: 1000,
                 limit: 'Infinity'
             });
@@ -386,8 +387,9 @@
                 model: 'TestCase',
                 filters: filters,
                 fetch: ['LastRun','LastVerdict','Attachments','Type','WorkProduct','ObjectID'],
-                context: this.context.getDataContext(),
-                pageSize: 1000,
+                //context: this.context.getDataContext(),
+                context: {project: null},
+                pageSize: 2000,
                 limit: 'Infinity'
             });
         },
@@ -399,7 +401,8 @@
                 fetch: ['ObjectID', 'FormattedID', 'ScheduleState', 'PlanEstimate','Iteration','Name','StartDate','EndDate','State','DirectChildrenCount','TestCases','Resolution'],
                 filters: filters,
                 pageSize: 1000,
-                context: this.context.getDataContext(),
+                //context: this.context.getDataContext(),
+                context: {project: null},
                 limit: 'Infinity'
             });
         },
