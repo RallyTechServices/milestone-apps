@@ -628,8 +628,20 @@
                      inlineFilterPanelConfig: {
                          collapsed: true,
                          quickFilterPanelConfig: {
-                             defaultFields: ['ArtifactSearch','ModelType']
-                         }
+                             defaultFields: ['ArtifactSearch','ModelType'],
+                             addQuickFilterConfig: {
+                                    blackListFields: ['Iteration', 'PortfolioItem'],
+                                    whiteListFields: ['Milestones', 'Tags']
+                                }
+                         },
+                         advancedFilterPanelConfig: {
+                                advancedFilterRowsConfig: {
+                                    propertyFieldConfig: {
+                                        blackListFields: ['Iteration', 'PortfolioItem'],
+                                        whiteListFields: ['Milestones', 'Tags']
+                                    }
+                                }
+                            }
                      }
                  }
             });
