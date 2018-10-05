@@ -14,7 +14,7 @@ module.exports = function(grunt) {
         config = grunt.file.readJSON(config_file_name);
 
         if ( config.javascript ) {
-            config.js_files = config.javascript;
+            config.js_files = grunt.file.expand(config.javascript);
         } else {
             config.js_files = grunt.file.expand(['src/javascript/utils/*.js','src/javascript/*.js']);
         }
@@ -51,9 +51,12 @@ module.exports = function(grunt) {
         grunt.log.writeln("");
         grunt.log.writeln("WARNING: Slow tests won't run without an auth.json file");
     }
+    
+    pkg = grunt.file.readJSON('package.json')
+    config.pkg = pkg
 
     grunt.initConfig({
-        pkg: grunt.file.readJSON('package.json'),
+        pkg: pkg,
         uglify: {
             options: {
                 mangle: true
@@ -70,6 +73,13 @@ module.exports = function(grunt) {
                     variables: config
                 },
 
+                debugsdk: {
+                    src: 'templates/App-debugsdk-tpl.html',
+                    dest: 'deploy/App.txt',
+                    engine: 'underscore',
+                    variables: config
+                },
+
                 prod: {
                     src: 'templates/App-tpl.html',
                     dest: 'deploy/App.txt',
@@ -82,17 +92,23 @@ module.exports = function(grunt) {
                     dest: 'deploy/Ugly.txt',
                     engine: 'underscore',
                     variables: config
+                },
+
+                makeauth: {
+                    src: 'templates/auth-tpl.json',
+                    dest: './auth.json',
+                    engine: 'underscore'
                 }
         },
         watch: {
-            files: ['test/fast/*-spec.js',config.js_files, config.css_files],
+            files: ['test/fast/**/*-spec.js',config.js_files, config.css_files],
             tasks: ['test-and-deploy']
         },
         jasmine: {
             fast: {
                 src: config.js_files,
                 options: {
-                    specs: 'test/fast/*-spec.js',
+                    specs: 'test/fast/**/*-spec.js',
                     helpers: 'test/fast/*Helper.js',
                     template: 'test/fast/custom.tmpl',
                     vendor:[
@@ -118,6 +134,31 @@ module.exports = function(grunt) {
                     junit: {
                         path: 'test/logs/slow'
                     }
+                }
+            }
+        },
+        prompt: {
+            makeauth: {
+                options: {
+                    questions: [
+                        {
+                            config: 'template.makeauth.variables.user',
+                            type: 'input',
+                            message: 'Enter Rally username'
+                        },
+                        {
+                            config: 'template.makeauth.variables.password',
+                            type: 'password',
+                            message: 'Enter Rally password'
+                        },
+                        {
+                            config: 'template.makeauth.variables.server',
+                            type: 'list',
+                            message: 'Choose Rally server',
+                            default: 'https://rally1.rallydev.com',
+                            choices: ['https://rally1.rallydev.com','https://us1.rallydev.com']
+                        }
+                    ]
                 }
             }
         }
@@ -190,8 +231,7 @@ module.exports = function(grunt) {
         request.defaults({jar: j});
 
         var installApp = function(page_oid,panel_oid) {
-            // DEFAULT TO ugly for deploying
-            var html = grunt.file.read('deploy/Ugly.txt');
+            var html = grunt.file.read(deploy_file_name);
 
             var uri = config.auth.server + "/slm/dashboard/changepanelsettings.sp";
             grunt.log.writeln('URI:', uri);
@@ -204,7 +244,7 @@ module.exports = function(grunt) {
             var payload = {
                 oid: panel_oid,
                 settings: JSON.stringify({
-                    "title": config.name,
+                    "title": pkg.name,
                     "project": null,
                     "content": html,
                     "autoResize": true
@@ -279,7 +319,7 @@ module.exports = function(grunt) {
             };
 
             var payload = {
-                name: "*" + config.name,
+                name: "*" + pkg.name,
                 editorMode: 'create',
                 pid: 'myhome',
                 oid: 6440917,
@@ -355,9 +395,11 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-jasmine');
     grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.loadNpmTasks('grunt-contrib-watch');
+    grunt.loadNpmTasks('grunt-prompt');
 
     //tasks
     grunt.registerTask('default', ['debug','ugly']);
+    grunt.registerTask('makeauth', "Create a new auth.json file for connecting to Rally", ['prompt:makeauth','template:makeauth']);
 
     // a human readable .txt file
     grunt.registerTask('pretty', "Create the html for deployment",['template:prod','setPostBuildInfo:deploy/App.txt']);
@@ -370,9 +412,11 @@ module.exports = function(grunt) {
     grunt.registerTask('test-fast', "Run tests that don't need to connect to Rally", ['jasmine:fast']);
     grunt.registerTask('test-slow', "Run tests that need to connect to Rally", ['jasmine:slow']);
 
-    grunt.registerTask('test-and-deploy', 'Build and deploy app to the location in auth.json',['test-fast','ugly','install']);
+    grunt.registerTask('test-and-deploy', 'Build and deploy app to the location in auth.json',['test-fast','ugly','install:deploy/Ugly.txt']);
 
-    grunt.registerTask('deploy', 'Build and deploy app to the location in auth.json',['ugly','install']);
+    grunt.registerTask('deploy', 'Build and deploy app to the location in auth.json',['ugly','install:deploy/Ugly.txt']);
 
-    grunt.registerTask('deploy-pretty', 'Build and deploy app to the location in auth.json',['pretty','install']);
+    grunt.registerTask('deploy-pretty', 'Build and deploy app to the location in auth.json',['pretty','install:deploy/App.txt']);
+
+    grunt.registerTask('deploy-debugsdk', 'Build and deploy app to the location in auth.json',['template:debugsdk', 'setPostBuildInfo:deploy/App.txt', 'install:deploy/App.txt']);
 };

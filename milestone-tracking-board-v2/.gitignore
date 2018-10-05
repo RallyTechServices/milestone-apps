@@ -9,3 +9,6 @@ deploy/app.min.js
 .settings
 deploy/ConfluenceApp.txt
 deploy/ExternalApp.txt
+auth.json.*
+deploy/
+-deploy/Ugly.txt
